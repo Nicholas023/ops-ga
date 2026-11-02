@@ -17,3 +17,7 @@ docs/
 AGENTS.md
 **/*.md
 !/README.md
+# Committed benchmark execution records. Research notes and design documents still belong to the
+# local sibling ../doc/ and remain ignored; only reviewed run records under experiments/ are tracked.
+!experiments/
+!experiments/**

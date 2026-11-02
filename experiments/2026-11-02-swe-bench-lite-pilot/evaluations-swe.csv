@@ -1,0 +1,10 @@
+run,split,instance,agent_steps,agent_tokens,agent_completed,official_verdict
+swe-pilot-04,gate,psf__requests-2317,11,143137,true,unresolved
+swe-pilot-04,train,psf__requests-863,21,396403,true,unresolved
+swe-pilot-04,train,pytest-dev__pytest-5692,22,695216,true,resolved
+swe-pilot-02,gate,psf__requests-2317,16,526861,true,unresolved
+swe-pilot-02,train,psf__requests-863,18,357524,true,unresolved
+swe-pilot-02,train,pytest-dev__pytest-5692,32,777026,true,resolved
+swe-pilot-01,gate,psf__requests-2317,12,249284,true,not-graded
+swe-pilot-01,train,psf__requests-863,16,250235,true,unresolved
+swe-pilot-01,train,pytest-dev__pytest-5692,25,767474,true,resolved
