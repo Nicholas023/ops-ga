@@ -7,8 +7,11 @@ Offline, budgeted genetic optimization for the DSH OPS tool-using agent. It sear
 ## 用法：
 
 1，克隆本仓库
+
 2，用你的dsh打开本仓库
+
 3，让他阅读这个仓库，然后告诉他你的预算，让他用这个预算跑任务，超预算了立刻停
+
 4，跑完了可以pr
 
 ```powershell
