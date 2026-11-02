@@ -8,7 +8,7 @@
     "trusted": true,
     "timeoutMs": 3600000,
     "options": {
-      "dsh": { "command": "dsh", "args": [], "home": "/ABSOLUTE/PRIVATE/DSH_HOME", "profile": "headless", "provider": "PIN_PROVIDER", "model": "PIN_MODEL", "permission": "workspace-write", "captureSessions": true, "acknowledgeIsolation": true, "provenance": { "dsh": "PIN_DSH_REF", "ops": "PIN_OPS_REF" }, "timeoutMs": 600000 },
+      "dsh": { "command": "dsh", "args": [], "home": "/ABSOLUTE/PRIVATE/DSH_HOME", "profile": "headless", "provider": "PIN_PROVIDER", "model": "PIN_MODEL", "permission": "workspace-write", "captureSessions": true, "acknowledgeIsolation": true, "provenance": { "dsh": "PIN_DSH_REF", "ops": "PIN_OPS_REF" }, "exposure": { "requiredTools": ["ops_grep"], "forbiddenTools": ["subagent"] }, "timeoutMs": 600000 },
       "harness": { "python": "/ABSOLUTE/PYTHON", "harnessCwd": "/ABSOLUTE/PINNED/SWE-bench", "revision": "PIN_40_HEX_HARNESS_COMMIT", "timeoutMs": 3000000 }
     }
   },
