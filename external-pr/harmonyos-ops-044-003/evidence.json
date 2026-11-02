@@ -1,0 +1,113 @@
+{
+  "synthetic": false,
+  "lane": "operations",
+  "benchmark": "custom fixture verifier",
+  "budget": {
+    "currency": "CNY",
+    "spent": 4.725464
+  },
+  "final": {
+    "status": "no-observed-regression",
+    "regressions": [],
+    "baselineTokens": 68893,
+    "candidateTokens": 68893,
+    "savings": 0,
+    "baselineSuccesses": 4,
+    "candidateSuccesses": 4,
+    "tasks": 4,
+    "synthetic": false,
+    "statisticalNonInferiorityProven": false,
+    "sandboxEnforced": false,
+    "sandboxEvidence": "sandbox: NOT enforceable (the kernel killed the Landlock probe with SIGSYS); landlock-run --probe exit 159 on HarmonyOS MNT-W72C"
+  },
+  "rows": [
+    {
+      "instanceId": "v3-test-locate",
+      "split": "test",
+      "baseline": {
+        "resolved": true,
+        "tokens": 24001,
+        "usageComplete": true,
+        "session": "sessions/v3-test-locate-baseline.jsonl",
+        "report": "reports/v3-test-locate-baseline.json",
+        "sessionId": "session-9328de10-c488-4c96-8b6f-fb5d1da1e7f7",
+        "sandboxEnforced": false
+      },
+      "candidate": {
+        "resolved": true,
+        "tokens": 24001,
+        "usageComplete": true,
+        "session": "sessions/v3-test-locate-candidate.jsonl",
+        "report": "reports/v3-test-locate-candidate.json",
+        "sessionId": "session-9328de10-c488-4c96-8b6f-fb5d1da1e7f7",
+        "sandboxEnforced": false
+      }
+    },
+    {
+      "instanceId": "v3-test-edit",
+      "split": "test",
+      "baseline": {
+        "resolved": true,
+        "tokens": 22929,
+        "usageComplete": true,
+        "session": "sessions/v3-test-edit-baseline.jsonl",
+        "report": "reports/v3-test-edit-baseline.json",
+        "sessionId": "session-c665e565-3154-4b6d-ade5-2dec80825772",
+        "sandboxEnforced": false
+      },
+      "candidate": {
+        "resolved": true,
+        "tokens": 22929,
+        "usageComplete": true,
+        "session": "sessions/v3-test-edit-candidate.jsonl",
+        "report": "reports/v3-test-edit-candidate.json",
+        "sessionId": "session-c665e565-3154-4b6d-ade5-2dec80825772",
+        "sandboxEnforced": false
+      }
+    },
+    {
+      "instanceId": "v3-test-sum",
+      "split": "test",
+      "baseline": {
+        "resolved": true,
+        "tokens": 10796,
+        "usageComplete": true,
+        "session": "sessions/v3-test-sum-baseline.jsonl",
+        "report": "reports/v3-test-sum-baseline.json",
+        "sessionId": "session-4ac32c51-202e-4423-9ad5-8b5696a0af36",
+        "sandboxEnforced": false
+      },
+      "candidate": {
+        "resolved": true,
+        "tokens": 10796,
+        "usageComplete": true,
+        "session": "sessions/v3-test-sum-candidate.jsonl",
+        "report": "reports/v3-test-sum-candidate.json",
+        "sessionId": "session-4ac32c51-202e-4423-9ad5-8b5696a0af36",
+        "sandboxEnforced": false
+      }
+    },
+    {
+      "instanceId": "v3-test-count",
+      "split": "test",
+      "baseline": {
+        "resolved": true,
+        "tokens": 11167,
+        "usageComplete": true,
+        "session": "sessions/v3-test-count-baseline.jsonl",
+        "report": "reports/v3-test-count-baseline.json",
+        "sessionId": "session-103b345c-0eb2-4454-95eb-7da59caa26f1",
+        "sandboxEnforced": false
+      },
+      "candidate": {
+        "resolved": true,
+        "tokens": 11167,
+        "usageComplete": true,
+        "session": "sessions/v3-test-count-candidate.jsonl",
+        "report": "reports/v3-test-count-candidate.json",
+        "sessionId": "session-103b345c-0eb2-4454-95eb-7da59caa26f1",
+        "sandboxEnforced": false
+      }
+    }
+  ]
+}
