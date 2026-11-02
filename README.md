@@ -4,9 +4,12 @@ Offline, budgeted genetic optimization for the DSH OPS tool-using agent. It sear
 
 > The repository contains implementation and this usage guide only. Research notes, design records, and experiment reports belong in the local sibling `../doc/` and are intentionally ignored by Git.
 
-## 中文快速入口
+## 用法：
 
-这是离线遗传优化框架，不是生产在线自优化插件。把本仓库交给你的 DSH 网页会话，明确说：**“先读 README，我的总预算为 X 美元；确认模型、单价、独立 DSH_HOME 和 benchmark 后再启动，预算不足立即停。”** 未提供预算时必须先询问，不允许自动代填。研究文档不入库，GitHub 只保留本使用说明。
+1，克隆本仓库
+2，用你的dsh打开本仓库
+3，让他阅读这个仓库，然后告诉他你的预算，让他用这个预算跑任务，超预算了立刻停
+4，跑完了可以pr
 
 ```powershell
 git clone https://github.com/Tranquillitatis-Lab/ops-ga.git
