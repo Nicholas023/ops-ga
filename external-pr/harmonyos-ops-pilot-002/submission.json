@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "submissionId": "harmonyos-ops-pilot-002",
+  "benchmark": {
+    "name": "custom",
+    "justification": "A private fixture suite (search/edit/aggregate tasks over a small pseudo-repository) used to pilot the framework on HarmonyOS arm64 with the OPS plugin; it is not a public benchmark and makes no public-benchmark claim.",
+    "dataset": "ops-ga local fixture suite v2 (9 tasks: 3 train / 2 gate / 4 test)",
+    "revision": "63c2552217e9e64d7b31358f3b2e009dfce83cdf4f66c149f563b59b07d4f77c",
+    "harnessRepository": "https://github.com/Tranquillitatis-Lab/ops-ga",
+    "harnessRevision": "f501771f6e90d9458cc2e2ecf68d4a757cefbe4e70df19719290707fe0755ebe",
+    "split": "test",
+    "selectionProtocol": "candidates selected on train + tuning gate only; the test split was opened once by validate and never used for selection",
+    "optimizationAndTestDisjoint": true
+  },
+  "environment": {
+    "dsh": "dsh 0.2.1-rc.2 source build @ 687f282e8625c6b8d11ff58211a90524be2e4317, node 26.10.0, HarmonyOS MNT-W72C",
+    "opsBaseline": "dsh-ops ohos install (verification pending)",
+    "opsCandidate": "winner guidance from candidate.json (no OPS source change)",
+    "provider": "deepseek-official",
+    "model": "deepseek-flash",
+    "reasoningEffort": "high",
+    "permission": "danger-full-access (host cannot enforce a sandbox; acknowledged, see reproduce.json sandbox)",
+    "toolMode": "native OPS tools (ops_glob/ops_grep/ops_replace/ops_bash) + built-ins"
+  },
+  "artifacts": {
+    "optimization": {
+      "path": "optimization-package.zip",
+      "sha256": "3ebe4c46c2e7a992e7fe46b3ea039d0e4482445b12431722538f8e93f71eb85c"
+    },
+    "evidence": {
+      "path": "evidence.json",
+      "sha256": "d88e3288bfbeb090b4ccd6831b086ff1ad0972c68bc36973c76b793b60c8c1d6"
+    },
+    "sessions": {
+      "path": "sessions-redacted.zip",
+      "sha256": "7edef6c56bd779df2ee6d2f660503bad978b7ad8436885aaf7de1302c3638c20"
+    }
+  },
+  "redaction": {
+    "reviewedByContributor": true,
+    "containsCredentials": false,
+    "redistributionAllowed": true,
+    "method": "literal-path redaction (/storage/Users/<user> -> /redacted/home, run dir -> /redacted/run, DSH_HOME -> /redacted/dsh-home), credential-pattern scrub, then automated secret scan; no provider keys or DSH home contents included"
+  },
+  "result": {
+    "status": "no-observed-regression",
+    "baselineTokens": 86579,
+    "candidateTokens": 86579,
+    "savings": 0,
+    "baselineSuccesses": 4,
+    "candidateSuccesses": 4,
+    "tasks": 4
+  }
+}

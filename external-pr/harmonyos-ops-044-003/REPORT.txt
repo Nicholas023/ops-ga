@@ -1,0 +1,58 @@
+Current-OPS pilot on HarmonyOS arm64 — dsh-ops 0.4.4 (null result, holdout recorded)
+
+WHY THIS SECOND SUBMISSION
+  The first submission in this PR (harmonyos-ops-pilot-002) pinned dsh-ops 0.3.1, because the
+  local openharmony fork's upstream pointer was last synced on 2026-10-16. Upstream is now
+  dsh-ops 0.4.4 (tag v0.4.4, 2026-10-28; npm latest) with 0.5.0-alpha4 on main, so that
+  baseline was stale. This submission reruns the same framework against the current release.
+
+WHAT IT TOOK TO RUN 0.4.4 ON HARMONYOS
+  The official 0.4.4 npm package ships no openharmony-arm64 payload and its platform matrix
+  rejects the host (Node reports process.platform = 'openharmony'). The worker was rebuilt
+  from the v0.4.4 tag for aarch64-linux-ohos with three OHOS-only adaptations, each measured
+  here first:
+    1. vendored cap-primitives 3.4.6 with an ENOSYS guard at the openat2 call site (the
+       kernel refuses openat2, and no userspace fallback can observe a signal);
+    2. ops-files/src/file_path.rs walks from the deepest openable ancestor, because open('/')
+       and open('/storage') are denied for this process;
+    3. ops-files/src/file.rs treats the inherited-ACL clear as best-effort, because hmdfs
+       answers EPERM for fremovexattr(system.posix_acl_access) and upstream treated that as
+       fatal, which broke every replace.
+  Without all three, every file tool answered ACCESS_DENIED (os error 13). With them the
+  worker passes its provenance check and runs: this run made 59 ops_* calls with 0 errors
+  (ops_glob 14, ops_grep 17, ops_inspect_local_file 18, ops_read_files 7, ops_edit_file 1,
+  ops_discover_tools 2). The port is a local patch on the v0.4.4 tag, not an upstream change.
+
+RUN
+  lane operations, suite v3 (4 train / 2 gate / 4 test), population 3, 2 generations,
+  llmMutation on, seed 42. Model deepseek-official/deepseek-flash, reasoningEffort high.
+  Dedicated DSH_HOME + headless profile; the live DSH home was never used.
+  Budget: the paying user approved CNY 20 in total; CNY 9.64 was already settled on the two
+  0.3.1 attempts, so this run was capped at the remaining CNY 10 (ledger: CNY 4.73, 27 calls,
+  590,683 tokens, pending false, no overshoot).
+
+RESULT (no improvement, export refused)
+  The baseline genome stayed champion: on train it used 76,970 tokens against 85,002 and
+  85,966, and on the tuning gate 54,729 against 60,075, with equal success counts. The final
+  paired holdout is therefore a control: 4/4 resolved in both arms, 68,893 tokens in both
+  arms, savings 0. export refused with 'No measured token improvement'.
+  This reproduces, on the current release, what the 0.3.1 attempt saw: the lane's supplemental
+  guidance costs tokens on these fixtures instead of saving them, and the framework's own
+  rule (export only after a real final improvement) correctly blocks publication.
+
+FINDINGS
+  1. dsh-ops 0.4.4 needs three platform adaptations to run on HarmonyOS; the released package
+     cannot select a worker there at all. The 0.5.0-alpha4 line moves the plugin to a single
+     'dsh-ops' row, which is the id ops-ga's propose() disable list expects; the 0.4.4 line
+     mounts dsh-ops-mode-* rows instead, so that disable list still misses the OPS tools on
+     0.4.4 (it also missed them on 0.3.1, which mounts dsh-ops-shell/-file/-ptc/-tui).
+  2. Two-task tuning gates keep failing to predict the holdout: in the 0.3.1 attempt a 5%
+     gate margin inverted to +43% tokens on test; here the ranking is consistent but flat.
+  3. Without a kernel sandbox (no Landlock, no bubblewrap on this host) the framework can only
+     run through the explicit, recorded danger-full-access acknowledgment, so every artifact
+     carries sandboxEnforced=false. This is a pilot, not a score.
+
+LIMITS
+  Custom fixture suite, 4 held-out tasks, one seed, one model, one host, no sandbox
+  enforcement. No public-benchmark quality, safety or non-inferiority claim is made; a
+  maintainer must rerun anything relied on.

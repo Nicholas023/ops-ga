@@ -1,0 +1,77 @@
+HarmonyOS arm64 + OPS pilot — run report (null result, submitted for the record)
+
+WHAT THIS IS
+An offline, budgeted ops-ga search run executed on a HarmonyOS PC (MNT-W72C, aarch64,
+HongMeng Kernel 1.13.0) against a dsh-ops ("OPS") plugin ported to openharmony-arm64.
+Two attempts were run inside one user-approved CNY 20 total budget. Neither attempt reached
+the repository's export bar (a measured holdout token improvement), so nothing is exported
+and no OPS/DSH source or profile changed. The package below is attempt 2.
+
+HOST AND PINS
+  DSH        0.2.1-rc.2, source build, upstream tag commit 687f282e8625c6b8d11ff58211a90524be2e4317
+  node       26.10.0
+  OPS        dsh-ops 0.3.1, ohos worktree fork (feat/ohos-arm64-support-sync), local commit e637d27
+  worker     runtime/openharmony-arm64/dsh-ops-worker sha256 c91d9689e7dda08dde42d4f812b0e3cd8b22b11eebc95175b5b114003e4ae6eb
+  model      deepseek-official / deepseek-flash, reasoningEffort=high
+  isolation  dedicated DSH_HOME + headless profile; the live DSH home was never used
+  tools      ops_bash, ops_glob, ops_grep, ops_inspect_local_file, ops_replace + built-ins
+
+SANDBOX (IMPORTANT)
+  This host cannot enforce any DSH sandbox: no bubblewrap, and the Landlock launcher probe
+  dies with SIGSYS (exit 159), so workspace-write/read-only fail closed at the first confined
+  call. The runs therefore used permission=danger-full-access inside an isolated home and
+  temp workspaces. That mode is REACHABLE ONLY WITH AN EXPLICIT ACKNOWLEDGMENT in the local
+  copy of the framework (runner.acknowledgeUnenforcedSandbox + runner.sandboxEvidence, plus
+  tests); the upstream default still refuses it. Every evaluation record, receipt, lane state,
+  candidate.json, final result and the export artifact of these runs carries
+  sandboxEnforced=false plus the measured evidence string. This is a platform limitation, not
+  a claim that full access is safe, and it is why the numbers below are a pilot, not a score.
+
+BUDGET (one shared ledger, CNY, user-approved 20)
+  attempt 1  calls 33  tokens 643,352  spent CNY 5.15  pending false
+  attempt 2  calls 23  tokens 561,513  spent CNY 4.49  pending false
+  total      calls 56                    spent CNY 9.64 (<= 20, no overshoot, nothing pending)
+  The ledger prices every token at the higher of the two pinned rates (CNY 2/M input,
+  CNY 8/M output, peak, 2026-11-02), so the provider invoice is lower than these figures.
+
+ATTEMPT 1 (discarded pilot, not submitted)
+  8-task fixture v1 (3 train / 2 gate / 3 test), population 4, 2 generations.
+  Result: winner 5dc68d2fffff390b2118 differed from the baseline and won the gate by ~5% of
+  gate tokens; on the held-out test it used 96,750 tokens vs the baseline's 67,613 (+43%)
+  with equal success (2/3 vs 2/3). export refused: "No measured token improvement".
+  Defect disclosed: one v1 test task (ops-test-count) expected 4 while the fixture really
+  contains 5 files under src/, so both arms failed it for a bad reason. v1 was superseded.
+
+ATTEMPT 2 (this submission)
+  9-task fixture v2 (3 train / 2 gate / 4 test), population 3, 2 generations.
+  Result: no candidate beat the baseline on train+gate, so the baseline genome remained
+  champion (winner f7a2d24f620f53a3953b). The paired holdout is therefore a control: 4/4
+  resolved in both arms, 86,579 tokens in both arms, savings 0. export refused:
+  "No measured token improvement". The test split was opened exactly once, after the search.
+
+FINDINGS
+  1. src/runner.mjs propose() still disables the ids dsh-ops, ops-file, ops-shell, ops-ptc,
+     ops-discovery, ops-sdk. dsh-ops 0.3.1 mounts dsh-ops-shell, dsh-ops-file, dsh-ops-ptc,
+     dsh-ops-tui, and the patch loader SILENTLY IGNORES unknown ids (verified: booting with
+     all six unknown ids prints no warning and exits 0). So during optimizer proposals the OPS
+     tools are not hidden, contrary to the comment "Disable them, not merely ask the agent".
+     A follow-up fix should use the real component ids, or make an unknown id an error.
+  2. A winner selected on a two-task tuning gate by a 5% token margin inverted to +43% tokens
+     on the held-out test (attempt 1). This matches the framework's own honesty flag
+     statisticalNonInferiorityProven=false; a small gate is not a reliable selector, so the
+     gate (or elites) should grow before any guidance change is trusted.
+  3. The framework cannot run at all on hosts without a Landlock/bwrap backend; it needs the
+     explicit, recorded exception described above (local only in these runs).
+
+REPRODUCTION
+  node bin/ops-ga.mjs doctor   --config <config with the pinned runner/provenance/pricing>
+  node bin/ops-ga.mjs run      --config <config> --lane operations --allow-paid
+  node bin/ops-ga.mjs validate --config <config> --lane operations --allow-paid
+  node bin/ops-ga.mjs export   --config <config> --lane operations --out <file>   # refuses: no improvement
+  The private config differs from config.redacted.json only in the redacted paths and in the
+  sandbox-acknowledgment fields described above; the search/task/price fields are identical.
+
+LIMITS
+  Custom fixture suite, 4 held-out tasks, one seed, one model, one host. This establishes no
+  public-benchmark quality, safety or non-inferiority claim. Maintainers must rerun anything
+  they intend to rely on.
