@@ -7,6 +7,7 @@ import { runSearch, validateFinal, exportWinner } from '../src/search.mjs';
 import { dshLaunch, runtimePatch } from '../src/runner.mjs';
 import { initialize } from '../src/init.mjs';
 import { execute } from '../src/process.mjs';
+import { analyzeRun } from '../src/evidence.mjs';
 
 const help = `ops-ga: offline genetic optimization, no production model overhead
 Usage: node bin/ops-ga.mjs <command> --config <file> [options]
@@ -14,6 +15,7 @@ Usage: node bin/ops-ga.mjs <command> --config <file> [options]
   run       Search train + tuning gate (mock by default)
   validate  Evaluate the frozen winner once on held-out test tasks
   export    Export reviewed guidance: --lane <id> --out <file>
+  analyze   Build private AI-readable index: --run-dir <existing-output> --out <file> [--pricing <file>]
   status    Print private-run aggregate state without opening holdout tasks
   doctor    Check configuration, CLI version/help and composed safety patch; no inference
   patch     Write pinned runtime overlay: --out <file>
@@ -23,21 +25,25 @@ Options:
   --config <file>     Local config (never commit credentials or private tasks)
   --out <file>        Required for export/patch
   --help             Show this usage
-Budget caps reserve before every call; provider overshoot can exceed a reservation.
+Budget caps reserve per session invocation, not per model step; provider overshoot can exceed a reservation.
 Model sessions are not an OS security boundary. Use a dedicated DSH_HOME and profile.
 `;
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help' || args.includes('--help')) { console.log(help); return; }
-  assert(['init', 'run', 'validate', 'export', 'status', 'doctor', 'patch'].includes(command), 'Unknown command');
+  assert(['init', 'run', 'validate', 'export', 'status', 'doctor', 'patch', 'analyze'].includes(command), 'Unknown command');
   const options = {};
   for (let i = 0; i < args.length; i++) {
-    assert(['--config', '--lane', '--out', '--allow-paid', '--budget-usd', '--confirm-budget'].includes(args[i]), `Unknown option ${args[i]}`);
+    assert(['--config', '--lane', '--out', '--run-dir', '--pricing', '--allow-paid', '--budget-usd', '--confirm-budget'].includes(args[i]), `Unknown option ${args[i]}`);
     if (args[i] === '--allow-paid') options.allowPaid = true;
     else if (args[i] === '--confirm-budget') options.confirm = true;
     else { const key = args[i].slice(2); assert(args[i + 1] && !args[i + 1].startsWith('--'), `Missing ${key}`); options[key] = args[++i]; }
   }
   if (command === 'init') { assert(options.out, '--out required'); console.log(JSON.stringify(await initialize(options.out, { budgetUSD: Number(options['budget-usd']), confirm: options.confirm }), null, 2)); return; }
+  if (command === 'analyze') {
+    assert(options['run-dir'] && options.out, 'analyze requires --run-dir and --out');
+    console.log(JSON.stringify(await analyzeRun(options['run-dir'], options.out, options.pricing ? await load(options.pricing) : null), null, 2)); return;
+  }
   assert(options.config, '--config required');
   const config = await readConfig(options.config);
   const lanes = options.lane ? config.lanes.filter(l => l.id === options.lane) : config.lanes;

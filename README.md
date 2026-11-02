@@ -107,7 +107,25 @@ Real configs require all of the following:
 - conservative pinned input/output prices in the same currency (`inputUSDPerMillion`/`outputUSDPerMillion`, or `inputCNYPerMillion`/`outputCNYPerMillion`), source and check date;
 - explicit user confirmation in the config plus `--allow-paid` at launch.
 
-All lanes share `output/budget.json`. Before every model call, including optimizer proposals, the runner reserves the configured tokens and amount in the declared currency. CNY is never silently treated as USD. It stops before a call if any cap would be exceeded; actual normalized usage settles the reservation. If the provider reports usage missing or a process ends after a request was accepted, the reservation remains pending and automatic retry is refused. A request already accepted by a provider may continue billing after local termination, so provider-side spending limits are mandatory. The local ledger is an estimate, not an invoice.
+All lanes share `output/budget.json`. Before every **session invocation**, including optimizer proposals, the runner reserves the configured tokens and amount in the declared currency. A session may contain several provider model steps: `maxCalls` counts session invocations, while `modelSteps` records observed model steps separately. CNY is never silently treated as USD. It stops before an invocation if any cap would be exceeded. Unknown billing retains its reservation and blocks automatic retry; provider-side hard limits remain mandatory.
+
+Reservations use the highest configured rate, but completed sessions settle using their actual normalized usage breakdown. Pin optional `cacheReadUSDPerMillion` / `cacheWriteUSDPerMillion` (or their `CNY` equivalents) alongside input/output rates. For example, a **historical user-provided** Flash table used input CNY 2/M, cache-read CNY 0.04/M and output CNY 8/M; this is not a current price quote. Missing cache prices fall back to the highest rate, and total-only adapters retain conservative pricing. Reasoning is already included in output and is never charged twice.
+
+`costMicros` is the occupied budget (settled usage estimate plus any pending reservation), in millionths of the declared currency. `estimatedSpentMicros` and `conservativeSpentMicros` show the two completed-invocation views separately; neither is a provider invoice. Cache hits are **observed**, never assumed when reserving a future session. Pin a conservative applicable tariff: do not claim an off-peak discount unless that tariff actually applied. Changing pricing/engine semantics requires a new output directory; historical ledgers are not rewritten.
+
+## AI-readable private analysis (no inference)
+
+```powershell
+node bin/ops-ga.mjs analyze --run-dir <existing-output-directory> --out <private-index.json>
+# Optional: reprice historical traces without changing their state or ledger
+node bin/ops-ga.mjs analyze --run-dir <existing-output-directory> --out <private-index.json> --pricing <pricing.json>
+```
+
+`pricing.json` contains only `{ "currency": "CNY", "rates": { ... } }` with the same rate fields, source and checked date as above; do not give the analyzer a credential-bearing config. The output must be outside the original run directory. It retains stable evaluation IDs, task/split/candidate relationships, session digests, usage breakdowns, model steps, tool/status counts, pairing/reuse information, and missing-evidence issues. It omits answers, prompts, tool arguments/results and environment configuration. It is still **private and unreviewed**: task IDs, filenames and hashes may be sensitive. Review before sharing; an index is not a public submission or proof of architecture causation.
+
+New final results explicitly distinguish a baseline-selected **identity control** (one evaluation reused in both arms) from two task-paired observations. Neither establishes statistical non-inferiority. Legacy runs without pairing metadata report pairing as unavailable rather than guessing from equal token totals. Failed process attempts now retain bounded private stdout/stderr and a terminal `attempt.json`; unknown billing stays pending. Identified model steps reject duplicates/orphans, while legacy unidentified streams remain explicitly labeled.
+
+Optimizer feedback now includes a bounded train-only slice of per-task token deltas, success/regression facts and tool counts, including expensive baseline successes. Gate/test records are never fed into proposals. This borrows the per-instance evidence principle from [FlashRSI](https://github.com/RUC-NLPIR/FlashRSI), without importing its orchestration, benchmark claims, or changing OPS production. Screening, repeated trials, runtime attestation and source-level OPS transformations remain future work. Total-token selection is deliberately unchanged: cache-driven cheaper billing is not evidence of less token usage.
 
 ## Benchmark and external PRs
 

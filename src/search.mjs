@@ -3,12 +3,15 @@ import { mkdir, open, unlink, readFile } from 'node:fs/promises';
 import { assert, hash, load, save, random } from './common.mjs';
 import { baseline, breed, candidateId, render, select, validateGenome } from './genome.mjs';
 import { evaluate, propose } from './runner.mjs';
-import { costMicros, dollarsToMicros, monetaryLimits } from './budget.mjs';
+import { priceUsage, dollarsToMicros, monetaryLimits } from './budget.mjs';
+import { trainingFeedback, comparison } from './evidence.mjs';
 
 export class Budget {
   constructor(config, state, persist) { this.config = config; this.limit = config.budget; this.state = state; this.persist = persist; }
   async reserve(episode) {
     const b = this.state.budget;
+    assert(!b.pending, 'Interrupted/unknown call: reservation retained; never overwrite pending usage');
+    b.accountingUnit = 'session-invocation';
     assert(b.calls + 1 <= this.limit.maxCalls && b.episodes + Number(episode) <= this.limit.maxEpisodes && b.tokens + this.limit.reserveTokensPerCall <= this.limit.maxTokens, 'Budget exhausted; increase limits in a NEW run, or stop');
     const money = monetaryLimits(this.limit);
     const reserved = money.reserve ? dollarsToMicros(money.reserve) : 0;
@@ -19,11 +22,20 @@ export class Budget {
     b.pending = true;
     await this.persist();
   }
-  async settle(tokens) {
+  async settle(value) {
+    const result = typeof value === 'number' ? { tokens: value } : value;
     const b = this.state.budget;
-    b.tokens += tokens - this.limit.reserveTokensPerCall;
+    assert(b.pending, 'No pending reservation to settle');
+    const pricing = priceUsage(result, this.config);
+    b.tokens += result.tokens - this.limit.reserveTokensPerCall;
     const money = monetaryLimits(this.limit);
-    if (money.reserve) b.costMicros += costMicros({ tokens }, this.config) - dollarsToMicros(money.reserve);
+    if (money.reserve) b.costMicros += pricing.estimatedMicros - dollarsToMicros(money.reserve);
+    b.estimatedSpentMicros = (b.estimatedSpentMicros ?? 0) + pricing.estimatedMicros;
+    b.conservativeSpentMicros = (b.conservativeSpentMicros ?? 0) + pricing.conservativeMicros;
+    b.modelSteps = (b.modelSteps ?? 0) + (result.steps ?? 0);
+    b.unknownStepInvocations = (b.unknownStepInvocations ?? 0) + Number(result.steps === undefined);
+    b.lastPricing = pricing;
+    b.invoiceVerified = false;
     b.pending = false;
     await this.persist();
     assert(b.tokens <= this.limit.maxTokens && (!money.max || b.costMicros <= dollarsToMicros(money.max)), 'Actual usage exceeded reservation: budget overshot; run stopped');
@@ -67,7 +79,7 @@ async function score(config, lane, genome, split, ctx) {
       // Each trial is in its own workspace; saved results only reused within exact config fingerprint.
       const result = await evaluate(config, lane, genome, { ...task, baselineWithoutGuidance: id === candidateId(lane, baseline(lane)) }, path.join(root, 'episodes', id, split, task.id));
       state.evaluations[key] = result;
-      await budget.settle(result.tokens);
+      await budget.settle(result);
       await persist();
     }
     results.push(state.evaluations[key]);
@@ -92,8 +104,8 @@ export async function runSearch(config, lane) {
         let genome = breed(lane, parents[Math.floor(rng() * parents.length)], parents[Math.floor(rng() * parents.length)], rng);
         if (config.runner.type !== 'mock' && config.search.llmMutation !== false) {
           await budget.reserve(false);
-          const reply = await propose(config, lane, parents, state.history.map(h => ({ generation: h.generation, training: h.training })).concat((state.rejections ?? []).slice(-10).map(r => ({ rejection: r.reason }))), path.join(root, 'proposals', `${generation}-${state.budget.calls}`));
-          await budget.settle(reply.tokens);
+          const reply = await propose(config, lane, parents, trainingFeedback(state, reference.id), path.join(root, 'proposals', `${generation}-${state.budget.calls}`));
+          await budget.settle(reply);
           try { genome = validateGenome(lane, JSON.parse(reply.text)); }
           catch (error) { state.rejections ??= []; state.rejections.push({ generation, reason: error.message }); await persist(); continue; }
         }
@@ -124,7 +136,7 @@ export async function validateFinal(config, lane) {
     const reference = await score(config, lane, baseline(lane), 'test', ctx);
     const candidate = await score(config, lane, state.candidates[state.winner], 'test', ctx);
     const regressions = candidate.results.filter((r, i) => reference.results[i].success && !r.success).map(r => r.task);
-    state.final = { status: regressions.length || !candidate.results.every(r => r.safety) ? 'rejected' : 'no-observed-regression', regressions, baselineTokens: reference.tokens, candidateTokens: candidate.tokens, savings: 1 - candidate.tokens / reference.tokens, baselineSuccesses: reference.successes, candidateSuccesses: candidate.successes, tasks: reference.results.length, synthetic: state.synthetic, statisticalNonInferiorityProven: false };
+    state.final = { ...comparison(reference, candidate), status: regressions.length || !candidate.results.every(r => r.safety) ? 'rejected' : 'no-observed-regression', regressions, baselineTokens: reference.tokens, candidateTokens: candidate.tokens, savings: 1 - candidate.tokens / reference.tokens, baselineSuccesses: reference.successes, candidateSuccesses: candidate.successes, tasks: reference.results.length, synthetic: state.synthetic, statisticalNonInferiorityProven: false };
     await persist(); return state.final;
   });
 }

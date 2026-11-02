@@ -6,7 +6,10 @@ import { readZip, makeZip } from './zip.mjs';
 import { parseHeadless } from './runner.mjs';
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function scanSecrets(text) {
-  return [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, /\b(?:sk-|ghp_|github_pat_)[a-zA-Z0-9_-]{16,}/, /(?:authorization|api[_-]?key|access[_-]?token)\s*[=:]\s*["']?(?!REDACTED|<redacted>)[a-zA-Z0-9_-]{16,}/i].some(re => re.test(text));
+  return [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, /\b(?:sk-|ghp_|github_pat_)[a-zA-Z0-9_-]{16,}/, /["']?(?:authorization|api[_-]?key|access[_-]?token)["']?\s*[=:]\s*["']?(?!REDACTED\b|<redacted>)[a-zA-Z0-9_-]{16,}/i].some(re => re.test(text));
+}
+function validateRedaction(value) {
+  assert(value?.reviewed === true && typeof value.method === 'string' && value.method.trim().length > 0, 'Session redaction review/nonempty method required');
 }
 const knownBenchmarks = new Set(['swe-bench', 'swe-bench-lite', 'swe-bench-verified', 'swe-bench-pro', 'terminal-bench', 'repo-bench', 'custom']);
 
@@ -41,7 +44,7 @@ export async function checkSubmission(file) {
   const sessionEntries = blobs.sessions;
   assert(sessionEntries.has('redaction.json'), 'Session ZIP needs redaction.json');
   const redaction = JSON.parse(sessionEntries.get('redaction.json'));
-  assert(redaction.reviewed === true && typeof redaction.method === 'string', 'Session redaction review/method required');
+  validateRedaction(redaction);
   let baseTokens = 0, candidateTokens = 0, baseSuccess = 0, candidateSuccess = 0;
   const ids = new Set();
   for (const row of evidence.rows) {
@@ -78,5 +81,6 @@ export async function packSessions(directory, files) {
     assert(!scanSecrets(bytes.toString('utf8')), `Potential secret in ${name}`); payload[name] = bytes;
   }
   assert(payload['redaction.json'], 'Include reviewed redaction.json');
+  validateRedaction(JSON.parse(payload['redaction.json']));
   return makeZip(payload);
 }

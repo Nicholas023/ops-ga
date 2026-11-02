@@ -67,15 +67,18 @@ test('fixture paths cannot escape, content checks execute outside the model', as
 });
 test('budget reserves before launch, counts proposals, refuses further calls', async () => {
   const state = { budget: { calls: 0, episodes: 0, tokens: 0 } };
-  const budget = new Budget({ budget: { maxCalls: 2, maxEpisodes: 1, maxTokens: 100, reserveTokensPerCall: 50 } }, state, async () => {});
+  const budget = new Budget({ runner: { type: 'mock' }, budget: { maxCalls: 2, maxEpisodes: 1, maxTokens: 100, reserveTokensPerCall: 50 } }, state, async () => {});
   await budget.reserve(false); await budget.settle(20);
   await budget.reserve(true); await budget.settle(50);
-  assert.deepEqual(state.budget, { calls: 2, episodes: 1, tokens: 70, costMicros: 0, currency: 'USD', pending: false });
+  assert.equal(state.budget.calls, 2); assert.equal(state.budget.episodes, 1);
+  assert.equal(state.budget.tokens, 70); assert.equal(state.budget.pending, false);
+  assert.equal(state.budget.accountingUnit, 'session-invocation');
+  assert.equal(state.budget.unknownStepInvocations, 2);
   await assert.rejects(() => budget.reserve(false), /exhausted/);
 });
 test('budget catches real overshoot rather than hiding it', async () => {
   const state = { budget: { calls: 0, episodes: 0, tokens: 0 } };
-  const budget = new Budget({ budget: { maxCalls: 2, maxEpisodes: 2, maxTokens: 100, reserveTokensPerCall: 50 } }, state, async () => {});
+  const budget = new Budget({ runner: { type: 'mock' }, budget: { maxCalls: 2, maxEpisodes: 2, maxTokens: 100, reserveTokensPerCall: 50 } }, state, async () => {});
   await budget.reserve(true); await assert.rejects(() => budget.settle(101), /overshot/);
   assert.equal(state.budget.tokens, 101);
 });
