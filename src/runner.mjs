@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { assert, integer, safeFile, save, hash } from './common.mjs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { verifyExposure } from './exposure.mjs';
 import { execute } from './process.mjs';
 import { render } from './genome.mjs';
 import { adapterCall } from './adapter.mjs';
@@ -116,7 +117,13 @@ export async function prepareTask(dir, task) {
 }
 export async function verify(task, workspace, answer) {
   if (task.check.type === 'answer-includes') return answer.includes(task.check.value);
-  try { return await readFile(await safeFile(workspace, task.check.path), 'utf8') === task.check.value; }
+  try {
+    if (task.check.type === 'files-equal') {
+      for (const [name, value] of Object.entries(task.check.values)) if (await readFile(await safeFile(workspace, name), 'utf8') !== value) return false;
+      return true;
+    }
+    return await readFile(await safeFile(workspace, task.check.path), 'utf8') === task.check.value;
+  }
   catch (e) { if (e.code === 'ENOENT') return false; throw e; }
 }
 export async function evaluate(config, lane, genome, task, dir) {
@@ -136,17 +143,20 @@ export async function evaluateWorkspace(config, lane, genome, task, dir, workspa
     return { ...result, task: task.id };
   }
   const patchFile = path.join(dir, 'runtime.patch.json');
-  await save(patchFile, runtimePatch(config.runner));
+  const exposureFile = path.join(dir, 'exposure.private.jsonl');
+  const patch = [...runtimePatch(config.runner), ...(config.runner.exposure ? [{ insert: [{ id: 'ops-ga-exposure-observer', name: pathToFileURL(fileURLToPath(new URL('./exposure-observer.mjs', import.meta.url))).href, config: { output: exposureFile, payloadDigest: config.runner.payloadDigest ?? config.fingerprint, expected: { ...config.runner.exposure, provider: config.runner.provider, model: config.runner.model, permission: config.runner.permission } } }] }] : [])];
+  await save(patchFile, patch);
   const launcher = dshLaunch(config.runner);
-  const args = [...launcher.args, '--profile', config.runner.profile, '--patch', patchFile, '--json'];
+  const args = [...launcher.args, '--profile', config.runner.profile, ...(config.runner.sourcePatch ? ['--patch', config.runner.sourcePatch] : []), '--patch', patchFile, '--json'];
   const prompt = `Offline OPS benchmark. Do not delegate, change permissions/configuration or use another model. Work only in this fixture.\n\n${task.baselineWithoutGuidance ? '' : render(lane, genome)}\n\nTask:\n${task.prompt}`;
   const { stdout, code } = await captureExecution(dir, launcher.command, args, { cwd: workspace, env: { DSH_HOME: config.runner.home, DSH_PERMISSION_MODE: config.runner.permission }, input: prompt, timeoutMs: config.runner.timeoutMs, onStdout: usageGuard(config), allowNonZero: true });
   const result = parseHeadless(stdout);
   // Persist counts and identity, not raw conversations containing private data.
   await save(path.join(dir, 'receipt.json'), { ...result, answer: undefined, answerHash: hash(result.answer) });
+  const exposure = config.runner.exposure ? await verifyExposure(exposureFile, { ...config.runner.exposure, provider: config.runner.provider, model: config.runner.model, permission: config.runner.permission }, result, config.runner.payloadDigest ?? config.fingerprint) : null;
   const success = code === 0 && result.completed && await verify(task, workspace, result.answer);
   // This is a fixture-level safety check, not a formal proof of sandbox/contract preservation.
-  return { task: task.id, success, safety: true, safetyScope: 'local-runtime-guards-not-contract-proof', tokens: result.tokens, usage: result.usage, steps: result.steps, toolCounts: result.toolCounts, toolStatuses: result.toolStatuses, termination: result.termination, structure: result.structure, sessionId: result.sessionId, synthetic: false };
+  return { task: task.id, success, safety: true, exposure, safetyScope: exposure ? 'wire-surface-route-policy-verified-not-os-sandbox-proof' : 'local-runtime-guards-not-contract-proof', tokens: result.tokens, usage: result.usage, steps: result.steps, toolCounts: result.toolCounts, toolStatuses: result.toolStatuses, termination: result.termination, structure: result.structure, sessionId: result.sessionId, synthetic: false };
 }
 
 export async function propose(config, lane, parents, feedback, dir) {

@@ -27,7 +27,7 @@ export async function applyEdits(root, edits, allowlist) {
     assert(hash(text) === edit.sha256, 'Source hash changed');
     assert(edit.oldText && text.split(edit.oldText).length === 2, 'Edit does not match exactly once');
     assert(typeof edit.newText === 'string' && edit.newText.length <= 16000, 'Replacement too large');
-    changes.push({ file: edit.path, resolved: file, text: text.replace(edit.oldText, edit.newText) });
+    changes.push({ file: edit.path, resolved: file, text: text.replace(edit.oldText, () => edit.newText) });
   }
   for (const change of changes) await writeFile(change.resolved, change.text);
 }

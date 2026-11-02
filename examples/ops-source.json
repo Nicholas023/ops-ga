@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "seed": 42,
+  "output": "../.runs/ops-source-001",
+  "runner": {
+    "type": "adapter",
+    "module": "../benchmarks/ops-source-adapter.mjs",
+    "trusted": true,
+    "timeoutMs": 3600000,
+    "options": {
+      "repository": "/ABSOLUTE/REVIEWED/OPS-REPOSITORY",
+      "revision": "PIN_40_HEX_OPS_COMMIT",
+      "driver": "/ABSOLUTE/REVIEWED/PREPARE-DRIVER.mjs",
+      "driverHash": "PIN_64_HEX_DRIVER_HASH",
+      "prepareTimeoutMs": 1200000,
+      "approvedPayloads": ["PIN_64_HEX_REVIEWED_PAYLOAD_DIGEST"],
+      "components": [{ "id": "PIN_ACTUAL_OPS_COMPONENT_ID", "module": "lib/components/file/index.js", "config": { "required": true } }],
+      "disableRows": ["PIN_OTHER_OPS_ROWS_DISABLED_IN_TEMPLATE"],
+      "exposure": { "requiredTools": ["PIN_ACTUAL_REQUIRED_WIRE_TOOL"], "forbiddenTools": ["subagent", "bash"] },
+      "dsh": {
+        "command": "dsh", "args": [], "home": "/ABSOLUTE/PRIVATE/TEMPLATE-HOME", "profile": "headless",
+        "provider": "PIN_PROVIDER", "model": "PIN_MODEL", "permission": "workspace-write", "captureSessions": true,
+        "acknowledgeIsolation": true, "provenance": { "dsh": "PIN_DSH_BUILD", "ops": "PIN_OPS_COMMIT" }, "timeoutMs": 600000
+      }
+    }
+  },
+  "search": { "population": 3, "generations": 1, "elites": 2, "llmMutation": false },
+  "evaluation": { "repetitions": 3, "order": "balanced", "requireRepresentativeSuite": true },
+  "budget": {
+    "currency": "CNY", "maxCNY": 20, "reserveCNYPerCall": 2,
+    "confirmedByUser": false, "confirmation": "REPLACE_WITH_EXPLICIT_USER_BUDGET_APPROVAL",
+    "rates": { "inputCNYPerMillion": 2, "outputCNYPerMillion": 8, "cacheReadCNYPerMillion": 0.04, "source": "PIN_ACTUAL_APPLICABLE_TARIFF", "checkedAt": "PIN_CHECK_DATE" },
+    "maxEpisodes": 200, "maxCalls": 200, "maxTokens": 10000000, "reserveTokensPerCall": 200000
+  },
+  "maxRegressions": 0,
+  "lanes": ["../.local/reviewed-source-lane.json"],
+  "tasksFile": "../.local/stratified-tasks.json"
+}

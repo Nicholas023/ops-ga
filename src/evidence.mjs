@@ -25,9 +25,9 @@ export function comparison(reference, candidate) {
     pairs: reference.results.map(base => {
       const other = candidate.results.find(r => r.task === base.task);
       assert(other, 'Missing candidate task in pair');
-      return { task: base.task, baselineEvaluationId: `${reference.id}/test/${base.task}`, candidateEvaluationId: `${candidate.id}/test/${base.task}`, reusedEvaluation: baselineSelected,
+      return { task: base.taskId ?? base.task, trialId: base.task, repetition: base.repetition ?? 0, baselineEvaluationId: base.evaluationId ?? `${reference.id}/test/${base.task}`, candidateEvaluationId: other.evaluationId ?? `${candidate.id}/test/${base.task}`, reusedEvaluation: baselineSelected,
         baselineTokens: base.tokens, candidateTokens: other.tokens, tokenDelta: other.tokens - base.tokens, baselineSuccess: base.success, candidateSuccess: other.success };
-    }), limitations: ['single-observation', 'sampling-uncontrolled', 'cache-and-order-uncontrolled', ...(baselineSelected ? ['same-evaluation-not-an-independent-ab-test'] : [])] };
+    }), limitations: ['sampling-uncontrolled', 'cache-uncontrolled', ...(baselineSelected ? ['same-evaluation-not-an-independent-ab-test'] : [])] };
 }
 
 async function checkAnalysisDestination(root, out) {
@@ -107,6 +107,8 @@ export async function analyzeRun(runDirectory, destination, pricing = null) {
       episodes.push({ schemaVersion: 'ops-ga.episode-summary/1', episodeId, lane, candidateId, optimizationSplit: split, task,
         tokens: result.tokens, usage: facts?.usage ?? result.usage ?? null, success: result.success, safety: result.safety,
         safetyScope: result.safetyScope ?? 'legacy-or-adapter-claim-not-verified', synthetic: result.synthetic,
+        taskId: result.taskId ?? task, repetition: result.repetition ?? 0, exposure: result.exposure ?? null,
+        sourceCandidate: result.source ? { payloadDigest: result.source.payloadDigest, sourceDigest: result.source.sourceDigest, repositoryRevision: result.source.repositoryRevision, compiledModules: result.source.compiledModules } : null,
         modelSteps: facts?.steps ?? result.steps ?? null, termination: facts?.termination ?? result.termination ?? 'unavailable',
         toolCounts: facts?.toolCounts ?? result.toolCounts ?? null, toolStatuses: facts?.toolStatuses ?? result.toolStatuses ?? null,
         source: sourceDigest ? { path: relative, sha256: sourceDigest, structure: facts?.structure ?? null } : null,

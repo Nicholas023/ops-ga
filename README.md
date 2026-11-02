@@ -33,7 +33,7 @@ node bin/ops-ga.mjs init --out ops-ga.local.json --budget-usd 10 --confirm-budge
 - Uses DSH headless JSON events for real inference. It records normalized input/output/cache token usage, final turn status, task verification, model/provider/provenance and private receipts.
 - Keeps the final `test` split closed until `validate`; no candidate selection can open it.
 - Resumes interrupted runs conservatively. A request with unknown billing state leaves a reservation and blocks automatic retry.
-- The baseline is current OPS without candidate supplemental guidance, not bare DSH. The `interface` and `discovery` lanes currently optimize session guidance, **not** the actual resident schema/registry. Actual schema/source transformations require a separately reviewed trusted adapter and an isolated OPS build; this repository does not pretend a prompt is a source-level rewrite.
+- The baseline is current OPS without candidate supplemental guidance, not bare DSH. Legacy `interface`/`discovery` lanes optimize session guidance. Opt-in `kind: "source"` lanes now evaluate reviewed source/schema replacements through the controlled adapter in isolated snapshots, with independent build/contract gates and actual wire-surface checks; they do not mutate the installed OPS.
 - Supports trusted local adapters for integrating public benchmark harnesses without giving model output arbitrary shell access.
 
 ## Requirements
@@ -113,6 +113,43 @@ Reservations use the highest configured rate, but completed sessions settle usin
 
 `costMicros` is the occupied budget (settled usage estimate plus any pending reservation), in millionths of the declared currency. `estimatedSpentMicros` and `conservativeSpentMicros` show the two completed-invocation views separately; neither is a provider invoice. Cache hits are **observed**, never assumed when reserving a future session. Pin a conservative applicable tariff: do not claim an off-peak discount unless that tariff actually applied. Changing pricing/engine semantics requires a new output directory; historical ledgers are not rewritten.
 
+## Controlled OPS architecture/source/schema optimization
+
+`examples/ops-source.json` is a fail-closed template, not a paid-run authorization. Architecture candidates are actual replacements in a pinned OPS Git snapshot, **not extra task guidance**. Source lanes can target resident-tool descriptions/schema definitions, discovery/loading implementation and result projections within the explicitly reviewed `src/` or `schemas/` allowlist. Permission/sandbox/credential/policy/adapter authority files, tests, package scripts, generated `lib/` and runtime artifacts cannot be candidate edit targets. Never remove argument/path/paging/CAS/permission contracts to save bytes.
+
+A source lane uses the existing bounded string/choice genome plus explicit bindings and reviewed seeds:
+
+```json
+{
+  "id": "resident-schema", "kind": "source",
+  "genes": { "description": { "type": "text", "initial": "EXACT_ORIGINAL_FRAGMENT", "maxChars": 1000, "required": ["REQUIRED_CONTRACT_TEXT"] } },
+  "bindings": [{ "gene": "description", "path": "src/schema.ts", "sha256": "FULL_ORIGINAL_FILE_SHA256", "oldText": "EXACT_ORIGINAL_FRAGMENT" }],
+  "seeds": [{ "description": "REVIEWED_REPLACEMENT_WITH_REQUIRED_CONTRACT_TEXT" }]
+}
+```
+
+Initial gene text must equal `oldText`. Use real source/contracts, not these placeholders. Obtain each full payload approval digest with `node bin/ops-ga.mjs payload --lane-file <lane.json> --genome <candidate.json>` and explicitly list reviewed digests in `runner.options.approvedPayloads`. Digests bind the complete lane/bindings and edits. `llmMutation` must be false for source search: it selects among reviewed seeds; arbitrary new source is not automatically executed. To expand the search, review additional seeds and start a fresh fingerprint-bound run.
+
+The adapter exports the pinned Git commit, rejects links/submodules, verifies original file hashes, and applies exact edits only in a new per-episode directory. A pinned **trusted local preparation driver** then receives argv `<request.json> <response.json>`; it must build that snapshot, execute independent no-skip contract tests, and provision a fresh DSH home/profile inside that episode. Driver request fields are `source`, `episodeDirectory`, `payloadDigest`; response requires `version:1`, the `source.receipt.json` input `sourceDigest`, `buildPassed:true`, `contractPassed:true`, `skipped:0`, `home`, `profile`, and a nonempty `checks` array of passing named contract checks. Install dependencies only in the snapshot, using a process-scoped proxy. The driver is privileged reviewed code, not a model-generated script or an OS sandbox. It must never modify stable profiles or weaken verifiers. The included `bin/prepare-ops-source.mjs` is an argv-only driver scaffold: `driverConfig.build`/`contract` arrays and `provision` each reference an absolute, hash-pinned external Node script plus args; `{source}`, `{home}`, `{episode}` are substituted. Contract scripts must print JSON `{ "passed": N, "failed": 0, "skipped": 0 }` with N > 0. These trusted scripts must be outside candidate scope; provisioning must create the isolated profile and point it to the built snapshot. There is no universal version-independent OPS/DSH provisioning recipe; operators must review their pinned scripts and supply `driverConfig.profile`.
+
+`components` explicitly maps actual profile row IDs to compiled modules within the snapshot: the original row is disabled, then a new `ops-ga-source-<id>` row is inserted with the candidate file URL. Optional `groupId`/`isolate` preserve the reviewed placement and scope. DSH patch `name` is a match guard, not a module-replacement field. `disableRows` explicitly disables other installed OPS rows. Never guess row IDs across releases. The adapter hashes source and selected compiled entries, verifies they remain unchanged, and loads only those entries via the episode runtime patch. Contracts and the wire observer remain outside candidate edit scope.
+
+### Actual tool exposure
+
+The read-only observer hooks DSH's `llm/stream` boundary: it records the **actual request** tool schemas, schema bytes/digests, session identity, route and resolved policy before provider dispatch. Required/forbidden/exact tool expectations fail closed before `next()`. After inference, snapshot counts must match model-step counts, and session/route/payload digests must reconcile. Raw snapshots are private and may contain sensitive schema text. A configured row or `--dump-config` is not accepted as proof of wire exposure. The hook is tested against a fake host and end-to-end fake DSH; a real pinned DSH/OPS deployment must verify compatibility before a paid campaign. Policy observation does not prove OS sandbox enforcement or module provenance against malicious trusted code.
+
+### Stratified tasks and repeated pairs
+
+Generate 18 deterministic local fixtures (six families × train/gate/test):
+
+```powershell
+node bin/ops-ga.mjs suite --out .local/stratified-tasks.json
+```
+
+Families cover discovery, whole-file paging, multi-file edits, aggregation, noisy-log triage and repair. These are **coverage strata, not a public benchmark or demonstrated production-representative corpus**; add independently verified real-world tasks for broader claims. `files-equal` verifies every named changed/unchanged file outside the model. `requireRepresentativeSuite:true` enforces family coverage on every split and duplicate task identities are rejected.
+
+`evaluation: { "repetitions": 3, "order": "balanced", "requireRepresentativeSuite": true }` repeats each candidate/task in isolated workspaces. Final baseline/candidate arms run interleaved in a deterministic seed-derived balanced order, persisted before holdout execution; resume reuses only exact trial IDs. Training/gate repeats remain candidate-grouped for selection. Final evidence preserves repetition IDs, planned/actual order, per-pair deltas, regressions and descriptive task-cluster bootstrap intervals. Replicates are not counted as independent new tasks. Provider sampling/cache remain uncontrolled and `statisticalNonInferiorityProven` stays false. Source searches require at least two repeats and the stratified suite; all invocations still consume the shared approved budget. No experiments are launched by suite/payload generation.
+
 ## AI-readable private analysis (no inference)
 
 ```powershell
@@ -125,7 +162,7 @@ node bin/ops-ga.mjs analyze --run-dir <existing-output-directory> --out <private
 
 New final results explicitly distinguish a baseline-selected **identity control** (one evaluation reused in both arms) from two task-paired observations. Neither establishes statistical non-inferiority. Legacy runs without pairing metadata report pairing as unavailable rather than guessing from equal token totals. Failed process attempts now retain bounded private stdout/stderr and a terminal `attempt.json`; unknown billing stays pending. Identified model steps reject duplicates/orphans, while legacy unidentified streams remain explicitly labeled.
 
-Optimizer feedback now includes a bounded train-only slice of per-task token deltas, success/regression facts and tool counts, including expensive baseline successes. Gate/test records are never fed into proposals. This borrows the per-instance evidence principle from [FlashRSI](https://github.com/RUC-NLPIR/FlashRSI), without importing its orchestration, benchmark claims, or changing OPS production. Screening, repeated trials, runtime attestation and source-level OPS transformations remain future work. Total-token selection is deliberately unchanged: cache-driven cheaper billing is not evidence of less token usage.
+Optimizer feedback now includes a bounded train-only slice of per-task token deltas, success/regression facts and tool counts, including expensive baseline successes. Gate/test records are never fed into proposals. This borrows the per-instance evidence principle from [FlashRSI](https://github.com/RUC-NLPIR/FlashRSI), without importing its orchestration, benchmark claims, or changing OPS production. Screening and formal non-inferiority remain future work. Controlled source adaptation and repeated paired evaluation are opt-in as described above. Total-token selection is deliberately unchanged: cache-driven cheaper billing is not evidence of less token usage.
 
 ## Benchmark and external PRs
 

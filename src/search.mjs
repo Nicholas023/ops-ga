@@ -5,6 +5,7 @@ import { baseline, breed, candidateId, render, select, validateGenome } from './
 import { evaluate, propose } from './runner.mjs';
 import { priceUsage, dollarsToMicros, monetaryLimits } from './budget.mjs';
 import { trainingFeedback, comparison } from './evidence.mjs';
+import { pairedSchedule, pairedStatistics, trialName } from './protocol.mjs';
 
 export class Budget {
   constructor(config, state, persist) { this.config = config; this.limit = config.budget; this.state = state; this.persist = persist; }
@@ -67,17 +68,24 @@ export async function withState(config, lane, fn) {
     return await fn({ state, root, persist, budget: new Budget(config, state, persist) });
   } finally { await lock.close(); await unlink(lockPath); }
 }
-async function score(config, lane, genome, split, ctx) {
+async function score(config, lane, genome, split, ctx, only = null) {
   const { state, root, persist, budget } = ctx;
   const id = candidateId(lane, genome);
   state.candidates[id] = genome;
   const results = [];
-  for (const task of config.tasks.filter(t => t.split === split)) {
-    const key = `${id}/${split}/${task.id}`;
+  const repetitions = config.evaluation?.repetitions ?? 1;
+  for (const task of config.tasks.filter(t => t.split === split)) for (let repetition = 0; repetition < repetitions; repetition++) {
+    if (only && (task.id !== only.task || repetition !== only.repetition)) continue;
+    const trial = trialName(task, repetition, repetitions);
+    const key = `${id}/${split}/${trial}`;
     if (!state.evaluations[key]) {
       await budget.reserve(true);
       // Each trial is in its own workspace; saved results only reused within exact config fingerprint.
-      const result = await evaluate(config, lane, genome, { ...task, baselineWithoutGuidance: id === candidateId(lane, baseline(lane)) }, path.join(root, 'episodes', id, split, task.id));
+      const result = await evaluate(config, lane, genome, { ...task, repetition, trialId: trial, baselineWithoutGuidance: id === candidateId(lane, baseline(lane)) }, path.join(root, 'episodes', id, split, trial));
+      if (result.synthetic === false && result.sessionId) assert(!Object.values(state.evaluations).some(r => r.sessionId === result.sessionId), 'DSH session identity reused across isolated trials');
+      result.task = trial; result.taskId = task.id; result.repetition = repetition;
+      result.executionIndex = state.nextExecutionIndex ?? 0; state.nextExecutionIndex = result.executionIndex + 1;
+      result.evaluationId = key;
       state.evaluations[key] = result;
       await budget.settle(result);
       await persist();
@@ -97,10 +105,10 @@ export async function runSearch(config, lane) {
       const rng = random(config.seed + generation);
       const previous = state.history.at(-1)?.elites ?? [reference.id];
       const parents = previous.map(id => state.candidates[id]);
-      const plan = state.plans[generation] ?? [initial, ...parents].filter((g, i, a) => a.findIndex(x => hash(x) === hash(g)) === i);
+      const plan = state.plans[generation] ?? [initial, ...parents, ...(lane.seeds ?? [])].filter((g, i, a) => a.findIndex(x => hash(x) === hash(g)) === i).slice(0, config.search.population);
       state.plans[generation] = plan;
       let attempts = 0;
-      while (plan.length < config.search.population && attempts++ < config.search.population * 6) {
+      while (lane.kind !== 'source' && plan.length < config.search.population && attempts++ < config.search.population * 6) {
         let genome = breed(lane, parents[Math.floor(rng() * parents.length)], parents[Math.floor(rng() * parents.length)], rng);
         if (config.runner.type !== 'mock' && config.search.llmMutation !== false) {
           await budget.reserve(false);
@@ -133,10 +141,20 @@ export async function validateFinal(config, lane) {
     if (state.final) return state.final;
     state.finalStarted = true;
     await persist();
-    const reference = await score(config, lane, baseline(lane), 'test', ctx);
+    const baseGenome = baseline(lane), baseId = candidateId(lane, baseGenome);
+    state.finalSchedule ??= pairedSchedule(config, lane, baseId, state.winner);
+    await persist();
+    for (const pair of state.finalSchedule) for (const arm of pair.order) {
+      await score(config, lane, arm === 'baseline' ? baseGenome : state.candidates[state.winner], 'test', ctx, pair);
+    }
+    const reference = await score(config, lane, baseGenome, 'test', ctx);
     const candidate = await score(config, lane, state.candidates[state.winner], 'test', ctx);
+    const paired = comparison(reference, candidate);
+    paired.comparisonKind = baseId === state.winner ? 'identity-control' : 'repeated-task-paired';
+    paired.protocol = { ...config.evaluation, schedule: state.finalSchedule, taskManifestHash: config.taskManifestHash, actualExecution: [...new Set([...reference.results, ...candidate.results].map(r => r.evaluationId))].map(id => ({ evaluationId: id, executionIndex: state.evaluations[id].executionIndex })).sort((a, b) => a.executionIndex - b.executionIndex) };
+    paired.statistics = pairedStatistics(paired.pairs, config.seed);
     const regressions = candidate.results.filter((r, i) => reference.results[i].success && !r.success).map(r => r.task);
-    state.final = { ...comparison(reference, candidate), status: regressions.length || !candidate.results.every(r => r.safety) ? 'rejected' : 'no-observed-regression', regressions, baselineTokens: reference.tokens, candidateTokens: candidate.tokens, savings: 1 - candidate.tokens / reference.tokens, baselineSuccesses: reference.successes, candidateSuccesses: candidate.successes, tasks: reference.results.length, synthetic: state.synthetic, statisticalNonInferiorityProven: false };
+    state.final = { ...paired, status: regressions.length || !candidate.results.every(r => r.safety) ? 'rejected' : 'no-observed-regression', regressions, baselineTokens: reference.tokens, candidateTokens: candidate.tokens, savings: 1 - candidate.tokens / reference.tokens, baselineSuccesses: reference.successes, candidateSuccesses: candidate.successes, tasks: paired.statistics.tasks, pairedObservations: reference.results.length, synthetic: state.synthetic, statisticalNonInferiorityProven: false };
     await persist(); return state.final;
   });
 }
@@ -145,7 +163,7 @@ export async function exportWinner(config, lane, destination) {
     assert(state.final?.status === 'no-observed-regression' && !state.synthetic && Object.values(state.evaluations).every(r => r.synthetic === false), 'Export requires a real completed final evaluation without observed regressions');
     assert(state.final.baselineSuccesses > 0 && state.final.candidateSuccesses >= state.final.baselineSuccesses, 'Cannot export an all-failed or quality-degraded final suite');
     assert(state.final.candidateTokens < state.final.baselineTokens, 'No measured token improvement');
-    await save(destination, { version: 1, lane: lane.id, fingerprint: config.fingerprint, guidance: render(lane, state.candidates[state.winner]), genome: state.candidates[state.winner], evidence: state.final, productionModelCallsAdded: 0 });
+    await save(destination, { version: 1, lane: lane.id, kind: lane.kind ?? 'guidance', fingerprint: config.fingerprint, guidance: lane.kind === 'source' ? undefined : render(lane, state.candidates[state.winner]), sourcePayload: lane.kind === 'source' ? { bindings: lane.bindings, adapter: config.runner.module, taskManifestHash: config.taskManifestHash, manualReviewRequired: true } : undefined, genome: state.candidates[state.winner], evidence: state.final, productionModelCallsAdded: 0 });
     return { destination, note: 'Review and integrate manually; no OPS source or profile was changed' };
   });
 }
