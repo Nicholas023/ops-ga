@@ -1,0 +1,41 @@
+{
+  "synthetic": false,
+  "benchmark": "swe-bench-lite",
+  "split": "test",
+  "rows": [
+    {
+      "instanceId": "pylint-dev__pylint-7993",
+      "baseline": {
+        "resolved": true,
+        "tokens": 285350,
+        "usageComplete": true,
+        "session": "sessions/pylint-dev__pylint-7993-baseline.jsonl",
+        "report": "reports/pylint-dev__pylint-7993-baseline.json"
+      },
+      "candidate": {
+        "resolved": true,
+        "tokens": 579191,
+        "usageComplete": true,
+        "session": "sessions/pylint-dev__pylint-7993-candidate.jsonl",
+        "report": "reports/pylint-dev__pylint-7993-candidate.json"
+      }
+    },
+    {
+      "instanceId": "mwaskom__seaborn-2848",
+      "baseline": {
+        "resolved": true,
+        "tokens": 978015,
+        "usageComplete": true,
+        "session": "sessions/mwaskom__seaborn-2848-baseline.jsonl",
+        "report": "reports/mwaskom__seaborn-2848-baseline.json"
+      },
+      "candidate": {
+        "resolved": true,
+        "tokens": 414535,
+        "usageComplete": true,
+        "session": "sessions/mwaskom__seaborn-2848-candidate.jsonl",
+        "report": "reports/mwaskom__seaborn-2848-candidate.json"
+      }
+    }
+  ]
+}
