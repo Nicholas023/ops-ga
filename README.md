@@ -114,6 +114,8 @@ optimization-package.zip   # complete payload: config, lane, winner, rejected hi
 sessions-redacted.zip       # reviewed, redistributable session evidence + redaction.json
 ```
 
+The optimization ZIP requires `candidate.json`, `config.redacted.json`, `reproduce.json`, `checks.json`, `history.json`, `budget.json`, a nonempty `payload/`, and official per-arm reports. `budget.json` must record `currency: "USD"`, positive `maxUSD`, settled `spentUSD <= maxUSD`, `confirmedByUser: true`, and `pending: false`. Each evidence row has `instanceId` and `baseline`/`candidate` objects with `resolved`, positive `tokens`, `usageComplete: true`, `session` (entry in session ZIP), and `report` (entry in optimization ZIP). Session entries must preserve headless `step_end.usage` for reconciliation. `redaction.json` requires `reviewed: true` and the redaction `method`.
+
 Run the gate locally:
 
 ```powershell
