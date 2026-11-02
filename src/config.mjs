@@ -3,6 +3,8 @@ import os from 'node:os';
 import { assert, integer, load, hash } from './common.mjs';
 import { validateBudget } from './budget.mjs';
 import { baseline, validateGenome, validateLane } from './genome.mjs';
+import { validateProtocol } from './protocol.mjs';
+import { sourcePayload } from './source-snapshot.mjs';
 
 export async function readConfig(file) {
   const config = await load(file);
@@ -32,8 +34,9 @@ export async function readConfig(file) {
     assert(['train', 'gate', 'test'].includes(task.split), 'Invalid task split');
     assert(typeof task.prompt === 'string', 'Missing task prompt');
     assert(task.files && typeof task.files === 'object' && !Array.isArray(task.files), 'Task files required');
-    assert(task.check && ['file-equals', 'answer-includes'].includes(task.check.type), 'Unsupported task verifier');
-    assert(typeof task.check.value === 'string', 'Missing expected value');
+    assert(task.check && ['file-equals', 'files-equal', 'answer-includes'].includes(task.check.type), 'Unsupported task verifier');
+    if (task.check.type === 'files-equal') assert(task.check.values && Object.keys(task.check.values).length > 0 && Object.values(task.check.values).every(v => typeof v === 'string'), 'Expected multi-file contents required');
+    else assert(typeof task.check.value === 'string', 'Missing expected value');
     if (task.check.type === 'file-equals') assert(typeof task.check.path === 'string', 'Missing checked path');
     if (task.benchmark?.datasetFile) {
       const bytes = await import('node:fs/promises').then(fs => fs.readFile(task.benchmark.datasetFile, 'utf8'));
@@ -42,6 +45,8 @@ export async function readConfig(file) {
     assert(Object.values(task.files).every(v => typeof v === 'string'), 'Fixture must contain text files');
   }
   for (const split of ['train', 'gate', 'test']) assert(config.tasks.some(t => t.split === split), `Missing ${split} tasks`);
+  validateProtocol(config);
+  if (config.lanes.some(l => l.kind === 'source')) assert(config.runner.type === 'adapter' && config.runner.module.endsWith('ops-source-adapter.mjs'), 'Source lanes require the controlled OPS adapter');
   if (config.runner.type === 'dsh') {
     assert(typeof config.runner.command === 'string', 'DSH command required');
     assert(Array.isArray(config.runner.args) && config.runner.args.every(a => typeof a === 'string'), 'DSH launcher args required');
@@ -76,12 +81,32 @@ export async function readConfig(file) {
       assert(!/REPLACE|YOUR_|PIN_/i.test([r.provider, r.model, r.provenance.dsh, r.provenance.ops].join(' ')), 'Replace SWE DSH route placeholders');
       integer(r.timeoutMs, 1000, 3600000, 'nested DSH timeoutMs');
     }
+    if (config.runner.module.endsWith('ops-source-adapter.mjs')) {
+      const o = config.runner.options;
+      assert(o && path.isAbsolute(o.repository) && /^[a-f0-9]{40}$/.test(o.revision), 'Pin OPS snapshot repository/revision');
+      assert(path.isAbsolute(o.driver) && hash(await fsAdapter.readFile(o.driver, 'utf8')) === o.driverHash, 'Pin reviewed source driver hash');
+      assert(o.dsh?.permission === 'workspace-write' && o.dsh.acknowledgeIsolation === true && o.dsh.captureSessions === true, 'Explicit isolated OPS DSH route required');
+      assert(o.dsh.provider && o.dsh.model && o.dsh.provenance?.dsh && o.dsh.provenance?.ops && Array.isArray(o.dsh.args), 'Pin nested DSH route/provenance');
+      assert(path.isAbsolute(o.dsh.home) && o.dsh.home !== path.resolve(os.homedir(), '.dsh'), 'No stable OPS DSH home');
+      if (o.driverConfig) {
+        for (const step of [...o.driverConfig.build, ...o.driverConfig.contract, o.driverConfig.provision]) assert(path.isAbsolute(step.script) && hash(await fsAdapter.readFile(step.script, 'utf8')) === step.sha256, 'Pin each trusted driver step hash');
+      }
+      assert(o.exposure && Array.isArray(o.exposure.requiredTools) && o.exposure.requiredTools.length > 0 && Array.isArray(o.exposure.forbiddenTools), 'Source adapter requires nonempty wire-tool expectations');
+      assert(Array.isArray(o.components) && o.components.length > 0, 'Source adapter requires compiled OPS component mapping');
+      assert(config.evaluation.repetitions >= 2 && config.evaluation.requireRepresentativeSuite === true, 'Source search requires repeated stratified evaluation');
+      assert(config.search.llmMutation === false, 'Source search initially uses only reviewed seeded candidates, not automatic LLM execution');
+      for (const lane of config.lanes) {
+        sourcePayload(lane, baseline(lane));
+        assert(Array.isArray(lane.seeds) && lane.seeds.length > 0 && lane.seeds.length < config.search.population, 'Source lane requires reviewed candidate seeds within population');
+        for (const seed of lane.seeds) assert(o.approvedPayloads?.includes(sourcePayload(lane, seed).digest), 'Approve every seeded source payload digest');
+      }
+    }
     integer(config.runner.timeoutMs, 1000, 3600000, 'timeoutMs');
   }
   assert(config.runner.type !== 'dsh' || config.runner.home !== path.resolve(process.env.USERPROFILE ?? process.env.HOME ?? '.', '.dsh'), 'Refusing default stable DSH home');
   validateBudget(config);
   // Bump when evaluator, accounting or selection semantics change; old evidence must never be silently reused.
-  config.engineVersion = 'ops-ga-engine-2';
+  config.engineVersion = 'ops-ga-engine-3';
   const fs = await import('node:fs/promises');
   const { fileURLToPath } = await import('node:url');
   const sourceDir = fileURLToPath(new URL('.', import.meta.url));

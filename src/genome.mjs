@@ -2,6 +2,7 @@ import { assert, hash, integer, stable } from './common.mjs';
 
 export function validateLane(lane) {
   assert(/^[a-z][a-z0-9-]{0,63}$/.test(lane.id), 'Invalid lane id');
+  assert(lane.kind === undefined || ['guidance', 'source'].includes(lane.kind), 'Unsupported lane kind');
   assert(lane.genes && Object.keys(lane.genes).length > 0, 'Lane needs genes');
   for (const [name, gene] of Object.entries(lane.genes)) {
     assert(/^[a-zA-Z][a-zA-Z0-9_]*$/.test(name), 'Invalid gene name');
@@ -29,7 +30,7 @@ export function validateGenome(lane, genome) {
   }
   return genome;
 }
-export const candidateId = (lane, genome) => hash({ lane: lane.id, genome }).slice(0, 20);
+export const candidateId = (lane, genome) => hash({ lane: lane.kind === 'source' ? lane : lane.id, genome }).slice(0, 20);
 export function breed(lane, a, b, rng) {
   const child = {};
   for (const [key, gene] of Object.entries(lane.genes)) {
@@ -43,6 +44,6 @@ export function render(lane, genome) {
   return [lane.protectedPolicy, ...Object.entries(genome).map(([key, value]) => `${key}:\n${value}`)].filter(Boolean).join('\n\n');
 }
 export function select(records, reference, maxRegressions = 0) {
-  return records.filter(r => r.results.every(x => x.safety === true) && r.results.filter((x, i) => reference.results[i].success && !x.success).length <= maxRegressions)
+  return records.filter(r => r.results.length === reference.results.length && r.results.every(x => x.safety === true) && r.results.filter((x, i) => reference.results[i].success && !x.success).length <= maxRegressions)
     .sort((a, b) => b.successes - a.successes || a.tokens - b.tokens || a.id.localeCompare(b.id));
 }
