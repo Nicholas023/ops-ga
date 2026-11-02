@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "seed": 42,
+  "output": "../.runs/swe-pilot-001",
+  "runner": {
+    "type": "adapter",
+    "module": "../benchmarks/swe-adapter.mjs",
+    "trusted": true,
+    "timeoutMs": 3600000,
+    "options": {
+      "dsh": { "command": "dsh", "args": [], "home": "/ABSOLUTE/PRIVATE/DSH_HOME", "profile": "headless", "provider": "PIN_PROVIDER", "model": "PIN_MODEL", "permission": "workspace-write", "captureSessions": true, "acknowledgeIsolation": true, "provenance": { "dsh": "PIN_DSH_REF", "ops": "PIN_OPS_REF" }, "timeoutMs": 600000 },
+      "harness": { "python": "/ABSOLUTE/PYTHON", "harnessCwd": "/ABSOLUTE/PINNED/SWE-bench", "revision": "PIN_40_HEX_HARNESS_COMMIT", "timeoutMs": 3000000 }
+    }
+  },
+  "search": { "population": 4, "generations": 2, "elites": 2, "llmMutation": true },
+  "budget": { "currency": "USD", "maxUSD": 20, "reserveUSDPerCall": 2, "confirmedByUser": false, "confirmation": "REPLACE_WITH_USER_APPROVAL", "rates": { "inputUSDPerMillion": 1, "outputUSDPerMillion": 10, "source": "PIN_PROVIDER_PRICING", "checkedAt": "PIN_DATE" }, "maxEpisodes": 40, "maxCalls": 60, "maxTokens": 2000000, "reserveTokensPerCall": 200000 },
+  "maxRegressions": 0,
+  "lanes": ["../lanes/operations.json"],
+  "tasksFile": "../.local/swe-tasks.json"
+}

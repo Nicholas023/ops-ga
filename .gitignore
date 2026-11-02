@@ -1,0 +1,19 @@
+# Local execution state, prompts, traces and credentials must never be published.
+node_modules/
+.runs/
+.local/
+ops-ga.local.json
+*.local.json
+.env
+.env.*
+!.env.example
+*.log
+*.tgz
+dist/
+coverage/
+.github/workflows/
+doc/
+docs/
+AGENTS.md
+**/*.md
+!/README.md

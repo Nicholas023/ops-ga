@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "seed": 42,
+  "output": "../.runs/demo-new",
+  "runner": { "type": "mock" },
+  "search": { "population": 4, "generations": 3, "elites": 2, "llmMutation": false },
+  "budget": { "maxEpisodes": 200, "maxCalls": 300, "maxTokens": 2000000, "reserveTokensPerCall": 10000 },
+  "maxRegressions": 0,
+  "lanes": ["../lanes/operations.json", "../lanes/interface.json", "../lanes/ptc.json", "../lanes/discovery.json"],
+  "tasks": [
+    { "id": "find-train", "split": "train", "files": { "src/a.txt": "needle: 42\n", "src/b.txt": "unrelated\n" }, "prompt": "Locate the file containing needle and report the value.", "check": { "type": "answer-includes", "value": "42" } },
+    { "id": "edit-train", "split": "train", "files": { "config.txt": "enabled=false\n" }, "prompt": "Change config.txt to enabled=true, retaining its trailing newline.", "check": { "type": "file-equals", "path": "config.txt", "value": "enabled=true\n" } },
+    { "id": "gate", "split": "gate", "files": { "nested/settings.txt": "timeout=10\n" }, "prompt": "Change nested/settings.txt timeout to 20, retaining its trailing newline.", "check": { "type": "file-equals", "path": "nested/settings.txt", "value": "timeout=20\n" } },
+    { "id": "holdout", "split": "test", "files": { "report.csv": "name,value\nalpha,17\nbeta,29\n" }, "prompt": "Compute the sum of the value column in report.csv.", "check": { "type": "answer-includes", "value": "46" } }
+  ]
+}

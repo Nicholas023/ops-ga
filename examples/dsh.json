@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "seed": 42,
+  "output": "../.runs/real-pilot-001",
+  "runner": {
+    "type": "dsh",
+    "command": "dsh",
+    "args": [],
+    "home": "../.local/dsh-home",
+    "profile": "headless",
+    "provider": "YOUR_EXACT_PROVIDER_ID",
+    "model": "YOUR_EXACT_DEPLOYMENT_MODEL_ID",
+    "reasoningEffort": "high",
+    "permission": "workspace-write",
+    "timeoutMs": 180000,
+    "acknowledgeIsolation": true,
+    "captureSessions": true,
+    "provenance": { "dsh": "REPLACE_WITH_VERSION_AND_BUILD", "ops": "REPLACE_WITH_VERSION_AND_COMMIT" }
+  },
+  "search": { "population": 4, "generations": 2, "elites": 2, "llmMutation": true },
+  "budget": { "currency": "USD", "maxUSD": 10, "reserveUSDPerCall": 1, "confirmedByUser": false, "confirmation": "REPLACE_WITH_USER_APPROVAL", "rates": { "inputUSDPerMillion": 1, "outputUSDPerMillion": 10, "source": "REPLACE_WITH_PROVIDER_PRICING_URL", "checkedAt": "REPLACE_WITH_DATE" }, "maxEpisodes": 80, "maxCalls": 100, "maxTokens": 8000000, "reserveTokensPerCall": 100000 },
+  "maxRegressions": 0,
+  "lanes": ["../lanes/operations.json"],
+  "tasks": [
+    { "id": "locate-train", "split": "train", "files": { "src/a.txt": "needle: 42\n", "src/b.txt": "unrelated\n" }, "prompt": "Locate the file containing needle and report its value.", "check": { "type": "answer-includes", "value": "42" } },
+    { "id": "edit-gate", "split": "gate", "files": { "nested/settings.txt": "timeout=10\n" }, "prompt": "Change nested/settings.txt timeout to 20, retaining its trailing newline.", "check": { "type": "file-equals", "path": "nested/settings.txt", "value": "timeout=20\n" } },
+    { "id": "sum-test", "split": "test", "files": { "report.csv": "name,value\nalpha,17\nbeta,29\n" }, "prompt": "Compute the sum of the value column in report.csv.", "check": { "type": "answer-includes", "value": "46" } }
+  ]
+}

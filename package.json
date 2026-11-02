@@ -1,0 +1,14 @@
+{
+  "name": "ops-ga",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline, budgeted genetic optimization of OPS agent interfaces through DSH sessions",
+  "engines": { "node": ">=22" },
+  "bin": { "ops-ga": "bin/ops-ga.mjs" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "demo": "node bin/ops-ga.mjs run --config examples/demo.json",
+    "doctor": "node bin/ops-ga.mjs doctor --config ops-ga.local.json"
+  }
+}
