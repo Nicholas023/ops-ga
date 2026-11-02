@@ -3,15 +3,17 @@ import { mkdir, open, unlink, readFile } from 'node:fs/promises';
 import { assert, hash, load, save, random } from './common.mjs';
 import { baseline, breed, candidateId, render, select, validateGenome } from './genome.mjs';
 import { evaluate, propose } from './runner.mjs';
-import { costMicros, dollarsToMicros } from './budget.mjs';
+import { costMicros, dollarsToMicros, monetaryLimits } from './budget.mjs';
 
 export class Budget {
   constructor(config, state, persist) { this.config = config; this.limit = config.budget; this.state = state; this.persist = persist; }
   async reserve(episode) {
     const b = this.state.budget;
     assert(b.calls + 1 <= this.limit.maxCalls && b.episodes + Number(episode) <= this.limit.maxEpisodes && b.tokens + this.limit.reserveTokensPerCall <= this.limit.maxTokens, 'Budget exhausted; increase limits in a NEW run, or stop');
-    const reserved = this.limit.reserveUSDPerCall ? dollarsToMicros(this.limit.reserveUSDPerCall) : 0;
-    assert(!reserved || (b.costMicros ?? 0) + reserved <= dollarsToMicros(this.limit.maxUSD), 'USD budget exhausted: no further calls');
+    const money = monetaryLimits(this.limit);
+    const reserved = money.reserve ? dollarsToMicros(money.reserve) : 0;
+    assert(!reserved || (b.costMicros ?? 0) + reserved <= dollarsToMicros(money.max), `${money.currency} budget exhausted: no further calls`);
+    b.currency = money.currency;
     b.calls++; b.episodes += Number(episode); b.tokens += this.limit.reserveTokensPerCall;
     b.costMicros = (b.costMicros ?? 0) + reserved;
     b.pending = true;
@@ -20,10 +22,11 @@ export class Budget {
   async settle(tokens) {
     const b = this.state.budget;
     b.tokens += tokens - this.limit.reserveTokensPerCall;
-    if (this.limit.reserveUSDPerCall) b.costMicros += costMicros({ tokens }, this.config) - dollarsToMicros(this.limit.reserveUSDPerCall);
+    const money = monetaryLimits(this.limit);
+    if (money.reserve) b.costMicros += costMicros({ tokens }, this.config) - dollarsToMicros(money.reserve);
     b.pending = false;
     await this.persist();
-    assert(b.tokens <= this.limit.maxTokens && (!this.limit.maxUSD || b.costMicros <= dollarsToMicros(this.limit.maxUSD)), 'Actual usage exceeded reservation: budget overshot; run stopped');
+    assert(b.tokens <= this.limit.maxTokens && (!money.max || b.costMicros <= dollarsToMicros(money.max)), 'Actual usage exceeded reservation: budget overshot; run stopped');
   }
 }
 export async function withState(config, lane, fn) {

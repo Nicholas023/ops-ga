@@ -70,7 +70,7 @@ test('budget reserves before launch, counts proposals, refuses further calls', a
   const budget = new Budget({ budget: { maxCalls: 2, maxEpisodes: 1, maxTokens: 100, reserveTokensPerCall: 50 } }, state, async () => {});
   await budget.reserve(false); await budget.settle(20);
   await budget.reserve(true); await budget.settle(50);
-  assert.deepEqual(state.budget, { calls: 2, episodes: 1, tokens: 70, costMicros: 0, pending: false });
+  assert.deepEqual(state.budget, { calls: 2, episodes: 1, tokens: 70, costMicros: 0, currency: 'USD', pending: false });
   await assert.rejects(() => budget.reserve(false), /exhausted/);
 });
 test('budget catches real overshoot rather than hiding it', async () => {

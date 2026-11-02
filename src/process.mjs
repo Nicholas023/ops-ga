@@ -21,7 +21,7 @@ export function execute(command, args, { cwd, env, input, timeoutMs = 120000, ma
         if (onStdout) { try { onStdout(chunk.toString()); } catch (error) { failure = error; kill(); } }
       } else stderr += chunk;
     });
-    child.on('close', code => { clearTimeout(timer); if (failure) reject(failure); else if (code !== 0 && !allowNonZero) reject(new Error(`Process exited ${code}; inspect private run evidence`)); else resolve({ stdout, stderr, code }); });
+    child.on('close', code => { clearTimeout(timer); if (failure) { failure.stdout = stdout; failure.stderr = stderr; reject(failure); } else if (code !== 0 && !allowNonZero) reject(new Error(`Process exited ${code}; inspect private run evidence`)); else resolve({ stdout, stderr, code }); });
     child.stdin.on('error', () => {});
     child.stdin.end(input);
   });

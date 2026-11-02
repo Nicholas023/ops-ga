@@ -31,7 +31,8 @@ export async function checkSubmission(file) {
   for (const entry of ['candidate.json', 'config.redacted.json', 'reproduce.json', 'checks.json', 'history.json', 'budget.json']) assert(opt.has(entry), `Optimization ZIP missing ${entry}`);
   assert([...opt.keys()].some(k => k.startsWith('payload/') && !k.endsWith('/')), 'Full optimization payload required');
   const submittedBudget = JSON.parse(opt.get('budget.json'));
-  assert(submittedBudget.currency === 'USD' && Number.isFinite(submittedBudget.maxUSD) && submittedBudget.maxUSD > 0 && Number.isFinite(submittedBudget.spentUSD) && submittedBudget.spentUSD >= 0 && submittedBudget.spentUSD <= submittedBudget.maxUSD, 'Submission must include approved USD budget and non-overspent ledger');
+  const maxSpend = submittedBudget[`max${submittedBudget.currency}`], spent = submittedBudget[`spent${submittedBudget.currency}`];
+  assert(['USD', 'CNY'].includes(submittedBudget.currency) && Number.isFinite(maxSpend) && maxSpend > 0 && Number.isFinite(spent) && spent >= 0 && spent <= maxSpend, 'Submission must include approved monetary budget and non-overspent ledger');
   assert(submittedBudget.confirmedByUser === true && submittedBudget.pending === false, 'Submission budget must be approved and settled');
   const checks = JSON.parse(opt.get('checks.json'));
   assert(checks.staticPassed === true && checks.contractPassed === true, 'Static and contract checks must pass');

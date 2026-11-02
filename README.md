@@ -90,18 +90,18 @@ node bin/ops-ga.mjs export --config .\ops-ga.local.json --lane operations --out 
 
 The default suite has only tiny smoke tasks; it **does not establish benchmark quality, safety, or statistically non-inferior success**. `safety` in built-in episode records means the run passed local runtime guards, not formal proof of every OPS contract. Production deployment always requires human review and the actual OPS contract regression suite.
 
-The launcher is passed `--profile headless --patch ... --json -`; the task itself is sent on stdin. There is no invented `dsh session create/send/export` command. For a user starting from the DSH web session, ask DSH to read this README and execute these commands in the project workspace; the run remains a child process with its own `DSH_HOME` and ledger.
+The launcher is passed `--profile headless --patch ... --json`; the task itself is sent on stdin (omitting the positional task requests stdin). Windows `.cmd` carriers explicitly forward UTF-8 stdin through PowerShell; a lone `-` is not passed through PowerShell `-File`. There is no invented `dsh session create/send/export` command. For a user starting from the DSH web session, ask DSH to read this README and execute these commands in the project workspace; the run remains a child process with its own `DSH_HOME` and ledger.
 
 ## Budget behavior
 
 Real configs require all of the following:
 
-- explicit USD maximum and per-call reservation;
+- explicit currency and maximum/per-call reservation: `currency: "USD"` + `maxUSD`/`reserveUSDPerCall`, or `currency: "CNY"` + `maxCNY`/`reserveCNYPerCall`;
 - token, call, episode and timeout caps;
-- a conservative pinned input/output price source and check date;
+- conservative pinned input/output prices in the same currency (`inputUSDPerMillion`/`outputUSDPerMillion`, or `inputCNYPerMillion`/`outputCNYPerMillion`), source and check date;
 - explicit user confirmation in the config plus `--allow-paid` at launch.
 
-All lanes share `output/budget.json`. Before every model call, including optimizer proposals, the runner reserves the configured tokens and USD. It stops before a call if any cap would be exceeded; actual normalized usage settles the reservation. If the provider reports usage missing or a process ends after a request was accepted, the reservation remains pending and automatic retry is refused. A request already accepted by a provider may continue billing after local termination, so provider-side spending limits are mandatory. The local ledger is an estimate, not an invoice.
+All lanes share `output/budget.json`. Before every model call, including optimizer proposals, the runner reserves the configured tokens and amount in the declared currency. CNY is never silently treated as USD. It stops before a call if any cap would be exceeded; actual normalized usage settles the reservation. If the provider reports usage missing or a process ends after a request was accepted, the reservation remains pending and automatic retry is refused. A request already accepted by a provider may continue billing after local termination, so provider-side spending limits are mandatory. The local ledger is an estimate, not an invoice.
 
 ## Benchmark and external PRs
 
@@ -114,7 +114,7 @@ optimization-package.zip   # complete payload: config, lane, winner, rejected hi
 sessions-redacted.zip       # reviewed, redistributable session evidence + redaction.json
 ```
 
-The optimization ZIP requires `candidate.json`, `config.redacted.json`, `reproduce.json`, `checks.json`, `history.json`, `budget.json`, a nonempty `payload/`, and official per-arm reports. `budget.json` must record `currency: "USD"`, positive `maxUSD`, settled `spentUSD <= maxUSD`, `confirmedByUser: true`, and `pending: false`. Each evidence row has `instanceId` and `baseline`/`candidate` objects with `resolved`, positive `tokens`, `usageComplete: true`, `session` (entry in session ZIP), and `report` (entry in optimization ZIP). Session entries must preserve headless `step_end.usage` for reconciliation. `redaction.json` requires `reviewed: true` and the redaction `method`.
+The optimization ZIP requires `candidate.json`, `config.redacted.json`, `reproduce.json`, `checks.json`, `history.json`, `budget.json`, a nonempty `payload/`, and official per-arm reports. `budget.json` must record an explicit `currency` (`USD` or `CNY`), positive `maxUSD`/`maxCNY`, settled `spentUSD <= maxUSD` or `spentCNY <= maxCNY`, `confirmedByUser: true`, and `pending: false`. Each evidence row has `instanceId` and `baseline`/`candidate` objects with `resolved`, positive `tokens`, `usageComplete: true`, `session` (entry in session ZIP), and `report` (entry in optimization ZIP). Session entries must preserve headless `step_end.usage` for reconciliation. `redaction.json` requires `reviewed: true` and the redaction `method`.
 
 Run the gate locally:
 

@@ -57,6 +57,7 @@ export function parseHeadless(text) {
 export function runtimePatch(runner) {
   return [
     { id: 'agent-default-model', config: { provider: runner.provider, model: runner.model, ...(runner.reasoningEffort ? { reasoningEffort: runner.reasoningEffort } : {}) } },
+    ...(runner.maxOutputTokens ? [{ id: 'llm-deepseek', config: { maxTokens: runner.maxOutputTokens } }] : []),
     { id: 'sandbox-policy', config: { mode: runner.permission } },
     // Root-only CLI usage does not account for child/summary models. Disable them, not merely ask the agent.
     ...['tool-subagent', 'tool-subagent-fork', 'tool-subagent-control', 'tool-subagent-list-agents', 'compaction-basic', 'tool-plugin-manager', 'tool-goal', 'workflow-ptc', 'tool-workflow'].map(id => ({ id, disabled: true }))
@@ -98,11 +99,12 @@ export async function evaluateWorkspace(config, lane, genome, task, dir, workspa
   const patchFile = path.join(dir, 'runtime.patch.json');
   await save(patchFile, runtimePatch(config.runner));
   const launcher = dshLaunch(config.runner);
-  const args = [...launcher.args, '--profile', config.runner.profile, '--patch', patchFile, '--json', '-'];
+  const args = [...launcher.args, '--profile', config.runner.profile, '--patch', patchFile, '--json'];
   const prompt = `Offline OPS benchmark. Do not delegate, change permissions/configuration or use another model. Work only in this fixture.\n\n${task.baselineWithoutGuidance ? '' : render(lane, genome)}\n\nTask:\n${task.prompt}`;
-  const { stdout, code } = await execute(launcher.command, args, { cwd: workspace, env: { DSH_HOME: config.runner.home, DSH_PERMISSION_MODE: config.runner.permission }, input: prompt, timeoutMs: config.runner.timeoutMs, onStdout: usageGuard(config), allowNonZero: true });
+  const { stdout, stderr, code } = await execute(launcher.command, args, { cwd: workspace, env: { DSH_HOME: config.runner.home, DSH_PERMISSION_MODE: config.runner.permission }, input: prompt, timeoutMs: config.runner.timeoutMs, onStdout: usageGuard(config), allowNonZero: true });
   // Raw evidence stays private and ignored; PR packaging requires separate explicit redaction review.
   await writeFile(path.join(dir, 'session.private.jsonl'), stdout, { mode: 0o600 });
+  await writeFile(path.join(dir, 'stderr.private.txt'), stderr, { mode: 0o600 });
   const result = parseHeadless(stdout);
   // Persist counts and identity, not raw conversations containing private data.
   await save(path.join(dir, 'receipt.json'), { ...result, answer: undefined, answerHash: hash(result.answer) });
@@ -120,10 +122,10 @@ export async function propose(config, lane, parents, feedback, dir) {
   }
   const patchFile = path.join(dir, 'runtime.patch.json');
   await mkdir(dir, { recursive: true });
-  await save(patchFile, [...runtimePatch({ ...config.runner, permission: 'read-only' }), ...['tool-bash', 'tool-pwsh', 'tool-fs', 'tool-fs-search', 'tool-web', 'tool-skill', 'ops-file', 'ops-shell', 'ops-ptc', 'ops-discovery', 'ops-sdk'].map(id => ({ id, disabled: true }))]);
+  await save(patchFile, [...runtimePatch({ ...config.runner, permission: 'read-only' }), ...['tool-bash', 'tool-pwsh', 'tool-fs', 'tool-fs-search', 'tool-web', 'tool-skill', 'dsh-ops', 'ops-file', 'ops-shell', 'ops-ptc', 'ops-discovery', 'ops-sdk'].map(id => ({ id, disabled: true }))]);
   const input = `You are an offline bounded interface optimizer. Return ONLY a JSON object containing exactly the genome gene keys; no markdown. Never weaken protected contracts. Edit only gene strings within declared bounds. Focus on expensive successful trajectories, not only failures. Do not use tools, delegate, edit files, reveal credentials or run commands. Parent crossover/mutation is allowed.\nLane: ${JSON.stringify(lane)}\nParents: ${JSON.stringify(parents)}\nAggregate training feedback (no held-out tasks): ${JSON.stringify(feedback)}\nPropose one distinct candidate.`;
   const launcher = dshLaunch(config.runner);
-  const { stdout } = await execute(launcher.command, [...launcher.args, '--profile', config.runner.profile, '--patch', patchFile, '--json', '-'], { cwd: dir, env: { DSH_HOME: config.runner.home, DSH_PERMISSION_MODE: 'read-only' }, input, timeoutMs: config.runner.timeoutMs, onStdout: usageGuard(config) });
+  const { stdout } = await execute(launcher.command, [...launcher.args, '--profile', config.runner.profile, '--patch', patchFile, '--json'], { cwd: dir, env: { DSH_HOME: config.runner.home, DSH_PERMISSION_MODE: 'read-only' }, input, timeoutMs: config.runner.timeoutMs, onStdout: usageGuard(config) });
   await writeFile(path.join(dir, 'session.private.jsonl'), stdout, { mode: 0o600 });
   const result = parseHeadless(stdout);
   assert(result.completed, 'Optimizer did not complete');
