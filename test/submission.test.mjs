@@ -38,7 +38,7 @@ test('USD ledger refuses next reservation and pending reservation remains charge
   const b = new Budget(paidConfig(), state, async () => {});
   await b.reserve(false);
   assert.equal(state.budget.costMicros, 600000);
-  await assert.rejects(() => b.reserve(true), /USD budget/);
+  await assert.rejects(() => b.reserve(true), /pending usage/);
 });
 test('budget is shared across lanes, not multiplied per direction', async () => {
   const c = await readConfig('examples/demo.json');

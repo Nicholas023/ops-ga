@@ -81,7 +81,7 @@ export async function readConfig(file) {
   assert(config.runner.type !== 'dsh' || config.runner.home !== path.resolve(process.env.USERPROFILE ?? process.env.HOME ?? '.', '.dsh'), 'Refusing default stable DSH home');
   validateBudget(config);
   // Bump when evaluator, accounting or selection semantics change; old evidence must never be silently reused.
-  config.engineVersion = 'ops-ga-engine-1';
+  config.engineVersion = 'ops-ga-engine-2';
   const fs = await import('node:fs/promises');
   const { fileURLToPath } = await import('node:url');
   const sourceDir = fileURLToPath(new URL('.', import.meta.url));
