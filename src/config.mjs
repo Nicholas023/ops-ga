@@ -1,4 +1,5 @@
 import path from 'node:path';
+import os from 'node:os';
 import { assert, integer, load, hash } from './common.mjs';
 import { validateBudget } from './budget.mjs';
 import { baseline, validateGenome, validateLane } from './genome.mjs';
@@ -51,6 +52,10 @@ export async function readConfig(file) {
     assert(config.runner.model && typeof config.runner.model === 'string', 'Pin deployment model');
     assert(config.runner.profile && typeof config.runner.profile === 'string', 'Pin isolated profile');
     assert(config.runner.permission === 'read-only' || config.runner.permission === 'workspace-write', 'No full-access benchmark permission');
+    const storageRoot = path.resolve(config.output);
+    const privateRoot = os.homedir();
+    assert(storageRoot !== privateRoot && storageRoot !== path.parse(storageRoot).root, 'Unsafe experiment output root');
+    assert(config.runner.home !== storageRoot && !storageRoot.startsWith(config.runner.home + path.sep), 'Do not store benchmark workspaces inside DSH_HOME');
     assert(config.runner.provenance && typeof config.runner.provenance.dsh === 'string' && typeof config.runner.provenance.ops === 'string', 'Pin DSH and OPS version/ref in provenance');
     for (const value of [config.runner.provider, config.runner.model, ...Object.values(config.runner.provenance)]) assert(!/REPLACE|YOUR_|PIN_/i.test(value), 'Replace all provider/model/provenance placeholders');
     assert(config.runner.captureSessions === true, 'Real evidence runs must explicitly enable private session capture');

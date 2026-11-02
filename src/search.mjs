@@ -27,7 +27,7 @@ export class Budget {
   }
 }
 export async function withState(config, lane, fn) {
-  const root = path.join(config.output, lane.id);
+  const root = path.resolve(path.join(config.output, lane.id));
   await mkdir(root, { recursive: true });
   // One global ledger/lock: all optimization lanes share the user's total budget.
   const lockPath = path.join(config.output, 'run.lock');

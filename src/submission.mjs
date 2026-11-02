@@ -51,6 +51,7 @@ export async function checkSubmission(file) {
       const session = parseHeadless(sessionEntries.get(r.session).toString('utf8'));
       assert(session.tokens === r.tokens, 'Session usage disagrees with evidence row');
       const report = JSON.parse(opt.get(r.report));
+      if (Array.isArray(report.resolved_ids)) assert(report.resolved_ids.includes(row.instanceId) || report.unresolved_ids?.includes(row.instanceId), 'Official report has no evaluated instance');
       const resolved = Array.isArray(report.resolved_ids) ? report.resolved_ids.includes(row.instanceId) : report[row.instanceId]?.resolved;
       assert(typeof resolved === 'boolean' && resolved === r.resolved, 'Official report disagrees with evidence row');
     }
