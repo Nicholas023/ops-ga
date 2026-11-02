@@ -71,9 +71,14 @@ Two consequences worth separating:
 
 ## Cost
 
+> Correction: these figures were first computed at peak-tier prices. The operator later confirmed
+> that only the earlier smoke run was billed at the peak tier, and that these runs fell in the idle
+> tier, which halves the real cost. See `experiments/2026-11-03-four-lane-run/README.md` for the
+> tiered accounting; the table below is kept as the peak-tier upper bound.
+
 | Measure | Value |
 | --- | --- |
-| Real provider cost (peak prices) | **CNY 0.3574** for the three completed evaluations |
+| Real provider cost (peak-tier upper bound) | **CNY 0.3574** for the three completed evaluations |
 | Ledger (all tokens at the output rate) | CNY 9.88 |
 | Plus the retained abort reservation | CNY 8.00 (charged, not refunded) |
 | Cache-hit share | 93% (1,149,056 / 1,234,756 tokens) |
