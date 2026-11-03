@@ -106,6 +106,7 @@ export async function analyzeRun(runDirectory, destination, pricing = null) {
       if (mismatch) issues.push({ episodeId, code: 'usage.state_mismatch', selectionEligible: false });
       episodes.push({ schemaVersion: 'ops-ga.episode-summary/1', episodeId, lane, candidateId, optimizationSplit: split, task,
         tokens: result.tokens, usage: facts?.usage ?? result.usage ?? null, success: result.success, safety: result.safety,
+        gradingOutcome: result.gradingOutcome ?? null, selectionEligible: result.selectionEligible ?? true, agentCompleted: result.agentCompleted ?? null,
         safetyScope: result.safetyScope ?? 'legacy-or-adapter-claim-not-verified', synthetic: result.synthetic,
         taskId: result.taskId ?? task, repetition: result.repetition ?? 0, exposure: result.exposure ?? null,
         sourceCandidate: result.source ? { payloadDigest: result.source.payloadDigest, sourceDigest: result.source.sourceDigest, repositoryRevision: result.source.repositoryRevision, compiledModules: result.source.compiledModules } : null,
