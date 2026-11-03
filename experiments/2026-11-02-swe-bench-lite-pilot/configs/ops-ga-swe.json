@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "seed": 42,
+  "output": "<LOCAL_ROOT>/.runs/swe-pilot-04",
+  "runner": {
+    "type": "adapter",
+    "module": "<LOCAL_ROOT>/ops-ga/benchmarks/swe-adapter.mjs",
+    "trusted": true,
+    "timeoutMs": 3600000,
+    "options": {
+      "dsh": {
+        "type": "dsh",
+        "command": "D:\\DSHtest\\bin\\dsh.cmd",
+        "args": [],
+        "home": "<LOCAL_ROOT>/dshhome",
+        "profile": "headless",
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "reasoningEffort": "max",
+        "permission": "workspace-write",
+        "captureSessions": true,
+        "acknowledgeIsolation": true,
+        "timeoutMs": 1200000,
+        "provenance": {
+          "dsh": "0.2.1-rc.5 (packaged desktop runtime)",
+          "ops": "dsh-ops 0.5.0-alpha3 (isolated copy)"
+        }
+      },
+      "harness": {
+        "python": "D:\\DSHtest\\bin\\wslpy\\target\\release\\wslpy.exe",
+        "harnessCwd": "D:\\DSHtest\\swebench\\harness",
+        "revision": "02e7a74ffd0b707aab73d203fe87bdc7c76afc8e",
+        "timeoutMs": 3000000
+      }
+    }
+  },
+  "search": {
+    "population": 3,
+    "generations": 1,
+    "elites": 1,
+    "llmMutation": true
+  },
+  "budget": {
+    "currency": "CNY",
+    "maxCNY": 180,
+    "reserveCNYPerCall": 8,
+    "confirmedByUser": true,
+    "confirmation": "2026-11-02 用户批准：真实预算 20 CNY；单次上限 1,000,000 tokens；账本按保守计价设 180",
+    "rates": {
+      "inputCNYPerMillion": 2,
+      "outputCNYPerMillion": 8,
+      "source": "DeepSeek official pricing https://api-docs.deepseek.com/quick_start/pricing (peak: cache-miss input 2, output 8 CNY/M)",
+      "checkedAt": "2026-11-02"
+    },
+    "maxEpisodes": 60,
+    "maxCalls": 100,
+    "maxTokens": 60000000,
+    "reserveTokensPerCall": 1000000
+  },
+  "maxRegressions": 0,
+  "lanes": [
+    "<LOCAL_ROOT>/ops-ga/lanes/operations.json"
+  ],
+  "tasksFile": "<LOCAL_ROOT>/swebench/swe-tasks.json"
+}

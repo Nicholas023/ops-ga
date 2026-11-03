@@ -1,0 +1,13 @@
+lane,split,evaluations,successes,aborts,tokens
+operations,train,6,3,0,2367067
+operations,gate,2,0,1,1190497
+operations,test,2,2,0,799200
+interface,train,6,3,0,1941255
+interface,gate,2,0,1,1153425
+interface,test,2,1,1,1240221
+ptc,train,6,2,1,3390640
+ptc,gate,2,0,1,1308499
+ptc,test,2,1,1,1384165
+discovery,train,6,2,1,2872265
+discovery,gate,4,0,2,2494041
+discovery,test,4,4,0,2257091

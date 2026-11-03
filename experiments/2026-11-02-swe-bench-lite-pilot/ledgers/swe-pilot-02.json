@@ -1,0 +1,11 @@
+{
+  "fingerprint": "02d1f08a03528c8d25a6af71ed11fc03c25f62e8c8c683e8121496c00b358ef1",
+  "budget": {
+    "calls": 4,
+    "episodes": 4,
+    "tokens": 2661411,
+    "pending": true,
+    "currency": "CNY",
+    "costMicros": 21291288
+  }
+}

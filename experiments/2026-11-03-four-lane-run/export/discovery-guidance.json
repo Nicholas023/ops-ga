@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "lane": "discovery",
+  "fingerprint": "272d779a0ba704f276378a888a9af85bafd42c55f6ea4bcc1824ac3b3a66c221",
+  "guidance": "Use only published tools. Newly discovered/loaded tools are available next step, not in the current call. Broaden queries when results are uncertain. Do not replace sandbox or authorization boundaries.\n\nquery:\nTranslate non-English intent into English capability keywords, including discriminating constraints.\n\nloading:\nPrefer existing suitable tools. Discover only missing capabilities, at most once per task phase; do not reload a tool that is already resident or was previously rejected. Batch independent discovery queries into a single step and keep a stable tool set for the phase. Newly discovered or loaded tools become available on the next step, never in the current call, so plan one step of slack instead of blocking. If top candidates do not fit, broaden the query with alternate or synonym keywords plus discriminating constraints rather than forcing a near match, and widen scope again when results are thin or ambiguous. Use only published tools; discovery never replaces or weakens sandbox and authorization boundaries.",
+  "genome": {
+    "query": "Translate non-English intent into English capability keywords, including discriminating constraints.",
+    "loading": "Prefer existing suitable tools. Discover only missing capabilities, at most once per task phase; do not reload a tool that is already resident or was previously rejected. Batch independent discovery queries into a single step and keep a stable tool set for the phase. Newly discovered or loaded tools become available on the next step, never in the current call, so plan one step of slack instead of blocking. If top candidates do not fit, broaden the query with alternate or synonym keywords plus discriminating constraints rather than forcing a near match, and widen scope again when results are thin or ambiguous. Use only published tools; discovery never replaces or weakens sandbox and authorization boundaries."
+  },
+  "evidence": {
+    "status": "no-observed-regression",
+    "regressions": [],
+    "baselineTokens": 1263365,
+    "candidateTokens": 993726,
+    "savings": 0.21342921483498434,
+    "baselineSuccesses": 2,
+    "candidateSuccesses": 2,
+    "tasks": 2,
+    "synthetic": false,
+    "statisticalNonInferiorityProven": false
+  },
+  "productionModelCallsAdded": 0
+}
