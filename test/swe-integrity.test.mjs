@@ -29,7 +29,8 @@ test('baseline grading failure settles persisted episodes and resume does not re
   c.budget.rates = { inputCNYPerMillion: 2, outputCNYPerMillion: 8 }; c.budget.reserveTokensPerCall = 1000;
   await assert.rejects(() => runSearch(c, c.lanes[0]), /Baseline grading infrastructure failed/);
   const file = path.join(c.output, c.lanes[0].id, 'state.json'), before = JSON.parse(await readFile(file));
-  assert.equal(before.budget.pending, false); assert.equal(Object.keys(before.evaluations).length, c.tasks.filter(t => ['train', 'gate'].includes(t.split)).length);
+  assert.equal(before.budget.pending, false); assert.equal(Object.keys(before.evaluations).length, 1);
+  assert.equal(before.budget.calls, 1);
   await assert.rejects(() => runSearch(c, c.lanes[0]), /Baseline grading infrastructure failed/);
   assert.equal(JSON.parse(await readFile(file)).budget.calls, before.budget.calls);
 });

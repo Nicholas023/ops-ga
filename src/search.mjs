@@ -90,7 +90,9 @@ async function score(config, lane, genome, split, ctx, only = null) {
       await budget.settle(result);
       await persist();
     }
-    results.push(state.evaluations[key]);
+    const result = state.evaluations[key];
+    assert(result.selectionEligible !== false, `${split === 'test' ? 'Final grading incomplete' : id === candidateId(lane, baseline(lane)) ? 'Baseline grading infrastructure failed' : 'Candidate grading infrastructure failed'}; inference usage settled. Inspect receipts and regrade without new inference`);
+    results.push(result);
   }
   return { id, genome, results, successes: results.filter(r => r.success).length, tokens: results.reduce((s, r) => s + r.tokens, 0) };
 }
@@ -101,7 +103,6 @@ export async function runSearch(config, lane) {
     const initial = baseline(lane);
     const reference = await score(config, lane, initial, 'train', ctx);
     const gateReference = await score(config, lane, initial, 'gate', ctx);
-    assert([...reference.results, ...gateReference.results].every(r => r.selectionEligible !== false), 'Baseline grading infrastructure failed; inference usage settled, inspect receipts and regrade without new inference');
     for (let generation = state.generation; generation < config.search.generations; generation++) {
       const rng = random(config.seed + generation);
       const previous = state.history.at(-1)?.elites ?? [reference.id];
@@ -150,7 +151,6 @@ export async function validateFinal(config, lane) {
     }
     const reference = await score(config, lane, baseGenome, 'test', ctx);
     const candidate = await score(config, lane, state.candidates[state.winner], 'test', ctx);
-    assert([...reference.results, ...candidate.results].every(r => r.selectionEligible !== false), 'Final grading incomplete; usage settled but no efficiency claim permitted');
     const paired = comparison(reference, candidate);
     paired.comparisonKind = baseId === state.winner ? 'identity-control' : 'repeated-task-paired';
     paired.protocol = { ...config.evaluation, schedule: state.finalSchedule, taskManifestHash: config.taskManifestHash, actualExecution: [...new Set([...reference.results, ...candidate.results].map(r => r.evaluationId))].map(id => ({ evaluationId: id, executionIndex: state.evaluations[id].executionIndex })).sort((a, b) => a.executionIndex - b.executionIndex) };
