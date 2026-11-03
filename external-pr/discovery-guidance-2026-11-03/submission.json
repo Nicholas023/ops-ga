@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "benchmark": {
+    "name": "swe-bench-lite",
+    "dataset": "SWE-bench/SWE-bench_Lite",
+    "revision": "b0dde1093fe417d83b7184254edf8199c1f0dff5",
+    "harnessRepository": "https://github.com/SWE-bench/SWE-bench",
+    "harnessRevision": "02e7a74ffd0b707aab73d203fe87bdc7c76afc8e",
+    "split": "test",
+    "selectionProtocol": "pre-registered instance IDs from a fixed-seed shuffle of SWE-bench_Lite; train/gate/test disjoint; no selection on test",
+    "optimizationAndTestDisjoint": true
+  },
+  "environment": {
+    "dsh": "0.2.1-rc.5 (packaged desktop runtime)",
+    "opsBaseline": "dsh-ops 0.5.0-alpha3 (isolated copy of the released build)",
+    "opsCandidate": "sha256:52549bbb36fb8c98882cb51aa11bfcae2091c44ff27b50b456a55f10e0e070e5",
+    "provider": "deepseek-official",
+    "model": "deepseek-flash",
+    "reasoningEffort": "max",
+    "permission": "workspace-write",
+    "toolMode": "native"
+  },
+  "artifacts": {
+    "optimization": {
+      "path": "optimization-package.zip",
+      "sha256": "328ba8788d1a296bc4b07c6db8bba4d38d8e5f79d4fd94d0708460327ecf10e2"
+    },
+    "evidence": {
+      "path": "evidence.json",
+      "sha256": "f9b2d16a3c35569209b00ddad83ec290332cad5131a3101b023ac120e362c5b5"
+    },
+    "sessions": {
+      "path": "sessions-redacted.zip",
+      "sha256": "fe467e68a9e5c8d53e76f6eee2f5b1198bd8d27620633663bd98205a4899a937"
+    }
+  },
+  "redaction": {
+    "reviewedByContributor": true,
+    "containsCredentials": false,
+    "redistributionAllowed": true,
+    "method": "manual review of packed session streams; repository scanSecrets() applied"
+  }
+}
