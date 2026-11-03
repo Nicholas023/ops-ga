@@ -62,6 +62,10 @@ test('external PR requires full optimization package, paired reports and session
   const manifest = { version: 1, benchmark: { name: 'swe-bench-lite', dataset: 'SWE-bench/SWE-bench_Lite', revision: 'rev', harnessRepository: 'https://github.com/SWE-bench/SWE-bench', harnessRevision: 'ref', split: 'test', selectionProtocol: 'fixed', optimizationAndTestDisjoint: true }, environment: Object.fromEntries(['dsh', 'opsBaseline', 'opsCandidate', 'provider', 'model', 'reasoningEffort', 'permission', 'toolMode'].map(k => [k, 'pinned'])), artifacts, redaction: { reviewedByContributor: true, containsCredentials: false, redistributionAllowed: true } };
   const file = path.join(root, 'submission.json'); await writeFile(file, JSON.stringify(manifest));
   const result = await checkSubmission(file); assert.equal(result.valid, true); assert.equal(result.candidateTokens, 70);
+  const aborted = makeZip({ 'redaction.json': JSON.stringify({ reviewed: true, method: 'manual' }), 'sessions/base.jsonl': makeSession(100),
+    'sessions/candidate.jsonl': makeSession(70).replace('completed', 'aborted') });
+  await writeFile(path.join(root, 'sessions.zip'), aborted); manifest.artifacts.sessions.sha256 = digest(aborted); await writeFile(file, JSON.stringify(manifest));
+  await assert.rejects(() => checkSubmission(file), /completed agent session/);
   manifest.artifacts.sessions.sha256 = '0'.repeat(64); await writeFile(file, JSON.stringify(manifest));
   await assert.rejects(() => checkSubmission(file), /SHA256/);
 });

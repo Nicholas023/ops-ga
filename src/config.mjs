@@ -79,6 +79,8 @@ export async function readConfig(file) {
       assert(path.isAbsolute(r.home) && r.home !== path.resolve(process.env.USERPROFILE ?? process.env.HOME ?? '.', '.dsh'), 'SWE adapter needs non-default absolute dedicated DSH_HOME');
       assert(r.acknowledgeIsolation === true && r.provenance?.dsh && r.provenance?.ops, 'SWE adapter requires isolation acknowledgment and DSH/OPS provenance');
       assert(!/REPLACE|YOUR_|PIN_/i.test([r.provider, r.model, r.provenance.dsh, r.provenance.ops].join(' ')), 'Replace SWE DSH route placeholders');
+      assert(r.exposure && Array.isArray(r.exposure.requiredTools) && r.exposure.requiredTools.some(n => n.startsWith('ops_')), 'SWE OPS experiments require actual wire exposure with a required ops_* tool');
+      assert(Array.isArray(r.exposure.forbiddenTools), 'Declare forbidden SWE wire tools explicitly');
       integer(r.timeoutMs, 1000, 3600000, 'nested DSH timeoutMs');
     }
     if (config.runner.module.endsWith('ops-source-adapter.mjs')) {
@@ -106,7 +108,7 @@ export async function readConfig(file) {
   assert(config.runner.type !== 'dsh' || config.runner.home !== path.resolve(process.env.USERPROFILE ?? process.env.HOME ?? '.', '.dsh'), 'Refusing default stable DSH home');
   validateBudget(config);
   // Bump when evaluator, accounting or selection semantics change; old evidence must never be silently reused.
-  config.engineVersion = 'ops-ga-engine-3';
+  config.engineVersion = 'ops-ga-engine-4';
   const fs = await import('node:fs/promises');
   const { fileURLToPath } = await import('node:url');
   const sourceDir = fileURLToPath(new URL('.', import.meta.url));

@@ -1,0 +1,3 @@
+# Evidence manifests hash exact bytes; Windows autocrlf must not rewrite them.
+* text=auto eol=lf
+*.zip binary

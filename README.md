@@ -2,7 +2,7 @@
 
 Offline, budgeted genetic optimization for the DSH OPS tool-using agent. It searches one isolated optimization lane at a time, evaluates paired baseline/candidate runs, and exports a reviewed artifact. **Nothing in this repository adds an optimizer, judge, or resident router to production DSH.**
 
-> The repository contains implementation and this usage guide only. Research notes, design records, and experiment reports belong in the local sibling `../doc/` and are intentionally ignored by Git.
+> The repository contains implementation, this usage guide, and reviewed contributor evidence under `experiments/` and `external-pr/`. Private research notes, design records, and maintainer audit reports belong in the local sibling `../doc/` and are intentionally ignored by Git.
 
 ## 用法：
 
@@ -75,20 +75,28 @@ The `10` above is only an example, not an approved default. `init` performs no i
 2. Replace the provider, model, DSH/OPS provenance, exact launcher, isolated `DSH_HOME`, and conservative pricing source/date.
 3. Set `confirmedByUser: true` only after the person paying the provider has reviewed `maxUSD`, `reserveUSDPerCall`, `maxTokens`, `maxCalls`, and `maxEpisodes`. Keep the confirmation text non-sensitive.
 4. Use an isolated DSH profile whose bundle is known to compose the `headless` app. Do not point it at a Desktop/Web home or stable profile.
-5. Run the offline configuration check; this invokes only `--version`, `--help`, and `--dump-config`, never an inference:
+5. Inspect the fresh-run conservative campaign bound before spending. This reads configuration only: it does not create a run, invoke DSH, or expose held-out answers. It includes repeats, both final arms and the maximum paid proposal attempts; when all lanes are selected it also totals their **shared** budget:
+
+```powershell
+node bin/ops-ga.mjs preflight --config .\ops-ga.local.json --lane operations
+```
+
+`plannedFits: false` is a warning, not a request to raise the paying user's ceiling. Actual sessions can settle below their reservations, so the bound is deliberately pessimistic. Reduce the reviewed population/generations/repeats, choose a smaller predeclared suite, or accept that the ledger may stop early. Reviewed seeds with `search.llmMutation: false` avoid paying for duplicate/invalid proposals. Never remove difficult instances after observing candidate results to manufacture a saving.
+
+6. Run the offline configuration check; this invokes only `--version`, `--help`, and `--dump-config`, never an inference. It checks the nested DSH route for SWE adapters too; `run`/`validate` automatically repeat this check before paid execution. The configuration dump may contain credentials and is never retained or printed:
 
 ```powershell
 node bin/ops-ga.mjs doctor --config .\ops-ga.local.json
 ```
 
-6. Run one lane. `--allow-paid` is an explicit operator confirmation in addition to the signed config confirmation:
+7. Run one lane. `--allow-paid` is an explicit operator confirmation in addition to the signed config confirmation:
 
 ```powershell
 node bin/ops-ga.mjs run --config .\ops-ga.local.json --lane operations --allow-paid
 node bin/ops-ga.mjs validate --config .\ops-ga.local.json --lane operations --allow-paid
 ```
 
-7. Inspect `output/<lane>/state.json`, private receipts, and the paired final result. Export is intentionally separate and requires a real final improvement:
+8. Inspect `output/<lane>/state.json`, private receipts, and the paired final result. `status` reads the authoritative shared `output/budget.json` (another lane may have spent since this lane's last save). Export is intentionally separate and requires a real final improvement:
 
 ```powershell
 node bin/ops-ga.mjs export --config .\ops-ga.local.json --lane operations --out .\local\operations-guidance.json
@@ -199,9 +207,17 @@ await importSWE('/private/official-rows.json', '.local/swe-tasks.json', {
 
 Do not select prompt variants on the final test set. Use a **unique run-id for every prediction patch**. Infrastructure/build failure is not a successful unresolved model episode; inspect the saved official report.
 
+The SWE adapter now requires `runner.options.dsh.exposure` with a nonempty `requiredTools` set containing an actual `ops_*` wire tool and an explicit `forbiddenTools` list. Choose names for the pinned presentation (Native/PTC), not merely the installed package name. Wire availability does not guarantee the model chooses OPS; inspect recorded call counts too. A run using only official `read/grep/pwsh/edit` cannot establish an OPS tool-efficiency result.
+
+Inference accounting and grading are separate: Docker/report failures retain known usage, mark `gradingOutcome: "infrastructure_failed"` and `selectionEligible: false`, and preserve grading diagnostics. Such results cannot win or support a final claim. A grading infrastructure failure stops immediately after that episode is persisted and known usage is settled, whether it is baseline, candidate, or holdout; remaining episodes are not paid for against a broken grader. Resume reuses the failure rather than reinferring. Inspect receipts and regrade without new inference. Unknown usage after a killed/unfinished inference still retains its reservation and blocks automatic resume. Completed state entries remain on disk; changing the configuration/engine still requires a fresh run rather than silently mixing evidence. An unusually heavy instance is not permission to clear pending billing, raise the approved monetary ceiling, or enable unaccounted compaction calls.
+
 SWE-bench is resource-intensive and Docker-based. Use the official harness in a separately pinned checkout and preserve its `logs/evaluation/<run-id>/results.json` in the optimization package. The adapter refuses an existing run-id because the harness caches by run-id and instance.
 
-Never include raw DSH homes, `.env`, keys, provider headers, private repositories, or unreviewed logs in a session ZIP. The validator checks ZIP paths, CRC, duplicate entries, size bounds, common secret patterns, artifact hashes, paired rows, complete usage, and required evidence. These checks do not prove a contributor's score is truthful; maintainers rerun the official harness and inspect the patch.
+Never include raw DSH homes, `.env`, keys, provider headers, private repositories, or unreviewed logs in a session ZIP. The validator checks ZIP paths, CRC, duplicate entries, size bounds, common secret patterns, artifact hashes, paired rows, complete usage, and required evidence. It also prints per-session tool counts/OPS calls, per-instance token deltas/regressions and identity-control warnings; a resolved result requires a completed agent session. `.gitattributes` pins text to LF so Windows `core.autocrlf` cannot invalidate byte-hashed JSON evidence; do not repair a checkout-only newline mismatch by changing the contributor's correct manifest. These checks do not prove a contributor's score is truthful; maintainers rerun the official harness and inspect the patch.
+
+### Recorded pilots are not a default optimization
+
+The merged discovery guidance pilot (`external-pr/discovery-guidance-2026-11-03`) reports 21.34% fewer total tokens on only two instances: one improves while the other consumes about twice as many tokens. Its four submitted sessions contain **zero `ops_*` tool calls**, so it cannot demonstrate OPS tool-efficiency benefits or justify installing that guidance by default. Wire availability and actual tool usage are different facts. The accompanying four-lane record used a disclosed, uncommitted abort-and-continue patch; its settled ledger is not proof that an interrupted upstream invocation has complete billing. Do not copy that behavior, reuse its opened holdout for selection, or interpret contributor reports as independent maintainer regrading. The HarmonyOS submissions contain identity controls, not two independent arms.
 
 ## Security boundary
 

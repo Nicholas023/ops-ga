@@ -46,6 +46,7 @@ export async function checkSubmission(file) {
   const redaction = JSON.parse(sessionEntries.get('redaction.json'));
   validateRedaction(redaction);
   let baseTokens = 0, candidateTokens = 0, baseSuccess = 0, candidateSuccess = 0;
+  const sessions = [], pairs = [];
   const ids = new Set();
   for (const row of evidence.rows) {
     assert(typeof row.instanceId === 'string' && !ids.has(row.instanceId), 'Duplicate/missing benchmark instance'); ids.add(row.instanceId);
@@ -57,11 +58,20 @@ export async function checkSubmission(file) {
       assert(typeof r.report === 'string' && opt.has(r.report), 'Every arm needs official harness report inside optimization ZIP');
       const session = parseHeadless(sessionEntries.get(r.session).toString('utf8'));
       assert(session.tokens === r.tokens, 'Session usage disagrees with evidence row');
+      assert(!r.resolved || session.completed, 'Resolved submission requires a completed agent session');
+      sessions.push({ instanceId: row.instanceId, arm, sessionId: session.sessionId, termination: session.termination,
+        toolCounts: session.toolCounts, opsCalls: Object.entries(session.toolCounts).filter(([name]) => name.startsWith('ops_')).reduce((sum, [, count]) => sum + count, 0) });
       const report = JSON.parse(opt.get(r.report));
-      if (Array.isArray(report.resolved_ids)) assert(report.resolved_ids.includes(row.instanceId) || report.unresolved_ids?.includes(row.instanceId), 'Official report has no evaluated instance');
+      if (Array.isArray(report.resolved_ids)) {
+        assert(report.resolved_ids.includes(row.instanceId) !== (report.unresolved_ids ?? []).includes(row.instanceId), 'Official report must contain exactly one evaluated outcome');
+        assert(!['infra_failure_ids', 'error_ids', 'incomplete_ids', 'ambiguous_failure_ids'].some(key => report[key]?.includes(row.instanceId)), 'Official report contains an infrastructure/incomplete outcome');
+      }
       const resolved = Array.isArray(report.resolved_ids) ? report.resolved_ids.includes(row.instanceId) : report[row.instanceId]?.resolved;
       assert(typeof resolved === 'boolean' && resolved === r.resolved, 'Official report disagrees with evidence row');
     }
+    pairs.push({ instanceId: row.instanceId, tokenDelta: row.candidate.tokens - row.baseline.tokens,
+      savings: 1 - row.candidate.tokens / row.baseline.tokens, regression: row.baseline.resolved && !row.candidate.resolved,
+      identityControl: sessions.at(-1).sessionId === sessions.at(-2).sessionId });
     baseTokens += row.baseline.tokens; candidateTokens += row.candidate.tokens;
     baseSuccess += Number(row.baseline.resolved); candidateSuccess += Number(row.candidate.resolved);
   }
@@ -70,7 +80,11 @@ export async function checkSubmission(file) {
     assert(!scanSecrets(bytes.toString('utf8')), `Potential secret in ${name}; redact before submission`);
   }
   assert(!scanSecrets(JSON.stringify(manifest)) && !scanSecrets(JSON.stringify(evidence)), 'Potential secret in metadata');
-  return { valid: true, instances: ids.size, baselineResolved: baseSuccess, candidateResolved: candidateSuccess, baselineTokens: baseTokens, candidateTokens, tokenSavings: 1 - candidateTokens / baseTokens, note: 'Package integrity only, not proof of truthful scores. Maintainer must rerun official harness; do not merge automatically.' };
+  return { valid: true, instances: ids.size, baselineResolved: baseSuccess, candidateResolved: candidateSuccess, baselineTokens: baseTokens, candidateTokens, tokenSavings: 1 - candidateTokens / baseTokens,
+    sessions, pairs, opsUsageObserved: sessions.some(session => session.opsCalls > 0),
+    warnings: [...(sessions.every(session => session.opsCalls === 0) ? ['No ops_* calls in submitted sessions; cannot establish OPS tool-efficiency benefits.'] : []),
+      ...(pairs.some(pair => pair.identityControl) ? ['Identity controls reuse the same session in both arms; they are not independent paired observations.'] : [])],
+    note: 'Package integrity only, not proof of truthful scores. Maintainer must rerun official harness; do not merge automatically.' };
 }
 export async function packSessions(directory, files) {
   // Caller provides exact relative allowlist; no sweeping DSH_HOME or hidden credentials.

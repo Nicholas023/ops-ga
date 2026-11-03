@@ -44,6 +44,6 @@ export function render(lane, genome) {
   return [lane.protectedPolicy, ...Object.entries(genome).map(([key, value]) => `${key}:\n${value}`)].filter(Boolean).join('\n\n');
 }
 export function select(records, reference, maxRegressions = 0) {
-  return records.filter(r => r.results.length === reference.results.length && r.results.every(x => x.safety === true) && r.results.filter((x, i) => reference.results[i].success && !x.success).length <= maxRegressions)
+  return records.filter(r => r.results.length === reference.results.length && r.results.every(x => x.safety === true && x.selectionEligible !== false) && r.results.filter((x, i) => reference.results[i].success && !x.success).length <= maxRegressions)
     .sort((a, b) => b.successes - a.successes || a.tokens - b.tokens || a.id.localeCompare(b.id));
 }

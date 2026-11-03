@@ -90,7 +90,9 @@ async function score(config, lane, genome, split, ctx, only = null) {
       await budget.settle(result);
       await persist();
     }
-    results.push(state.evaluations[key]);
+    const result = state.evaluations[key];
+    assert(result.selectionEligible !== false, `${split === 'test' ? 'Final grading incomplete' : id === candidateId(lane, baseline(lane)) ? 'Baseline grading infrastructure failed' : 'Candidate grading infrastructure failed'}; inference usage settled. Inspect receipts and regrade without new inference`);
+    results.push(result);
   }
   return { id, genome, results, successes: results.filter(r => r.success).length, tokens: results.reduce((s, r) => s + r.tokens, 0) };
 }
